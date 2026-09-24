@@ -1,0 +1,17 @@
+# Environment variables (API Keys)
+.env
+backend/.env
+*.env
+
+# Node dependencies
+node_modules/
+backend/node_modules/
+
+# Python cache (if any left)
+__pycache__/
+*.pyc
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
