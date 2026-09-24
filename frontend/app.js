@@ -510,32 +510,85 @@ function renderFindingCards(findingsList) {
 
   findingsList.forEach(f => {
     const card = document.createElement('div');
-    const signalClass = (f.signal || 'RED').toLowerCase();
-    card.className = `audit-card border-${signalClass}`;
-    card.setAttribute('data-signal', f.signal);
+    const signal = (f.signal || 'RED').toUpperCase();
+    
+    // Border colors based on signal
+    let borderColor = '#ef4444'; // Red (Conflict)
+    let badgeText = 'CONFLICT';
+    let badgeBg = 'rgba(239, 68, 68, 0.2)';
+    let badgeColor = '#f87171';
+
+    if (signal === 'YELLOW' || f.verdict === 'CAUTION') {
+      borderColor = '#f59e0b';
+      badgeText = 'CAUTION';
+      badgeBg = 'rgba(245, 158, 11, 0.2)';
+      badgeColor = '#fbbf24';
+    } else if (signal === 'GREEN' || f.verdict === 'COMPLIANT') {
+      borderColor = '#10b981';
+      badgeText = 'COMPLIANT';
+      badgeBg = 'rgba(16, 185, 129, 0.2)';
+      badgeColor = '#34d399';
+    }
+
+    // Outer card styling exactly matching your screenshot
+    card.style.cssText = `
+      background-color: #0b1120;
+      border: 1px solid #1e293b;
+      border-left: 4px solid ${borderColor};
+      border-radius: 6px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #e2e8f0;
+    `;
+    card.setAttribute('data-signal', signal);
 
     card.innerHTML = `
-      <div class="card-header">
-        <span class="badge badge-${signalClass}">${f.signal} - ${f.verdict}</span>
-        <span class="finding-id">${f.id}</span>
+      <!-- Header row: Clause Title + Badges -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <span style="font-weight: 700; font-size: 14px; letter-spacing: 0.5px; color: #ffffff; text-transform: uppercase;">
+          ${f.title || f.id || 'AUDIT CLAUSE'}
+        </span>
+        <div style="display: flex; gap: 8px;">
+          <span style="background: ${badgeBg}; color: ${badgeColor}; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase;">
+            ${badgeText}
+          </span>
+          <span style="background: #1e293b; color: #94a3b8; font-size: 11px; padding: 2px 8px; border-radius: 4px;">
+            explicitly stated
+          </span>
+        </div>
       </div>
-      <h3 class="finding-title">${f.title}</h3>
-      <p><strong>Vendor Request:</strong> "${f.vendor_request}"</p>
-      <p><strong>Rule Reference:</strong> ${f.rule_reference}</p>
-      <blockquote class="rule-quote">"${f.rule_quote}"</blockquote>
-      <p><strong>Impact Analysis:</strong> ${f.simple_why}</p>
-      <div class="decision-box">
-        <strong>Strategic Advice:</strong> ${f.decision_advice}
+
+      <!-- Vendor Permission Clause Text -->
+      <p style="color: #cbd5e1; font-size: 13px; line-height: 1.5; margin: 0 0 12px 0;">
+        "${f.vendor_request || ''}"
+      </p>
+
+      <!-- Finding description -->
+      <p style="font-size: 13px; line-height: 1.5; margin: 0 0 14px 0; color: #f1f5f9;">
+        <strong style="color: #ffffff;">Finding:</strong> ${f.simple_why || f.decision_advice || ''}
+      </p>
+
+      <!-- Blue Box: Policy Citation -->
+      <div style="background-color: rgba(14, 116, 144, 0.12); border: 1px solid rgba(56, 189, 248, 0.25); border-left: 3px solid #0284c7; border-radius: 4px; padding: 10px 14px; margin-bottom: 12px;">
+        <div style="color: #38bdf8; font-weight: 700; font-size: 12px; margin-bottom: 4px;">
+          Policy Citation (${f.rule_reference || 'Internal Policy'}):
+        </div>
+        <div style="color: #cbd5e1; font-size: 12px; line-height: 1.5;">
+          "${f.rule_quote || 'Standard policy requirement applies.'}"
+        </div>
       </div>
+
+      <!-- Amber/Brown Box: Suggested Redline Amendment -->
       ${f.replacement_clause ? `
-        <div class="redline-box">
-          <div class="redline-header">
-            <span>Enforceable Redline Replacement:</span>
-            <button type="button" class="btn-copy" onclick="copyRedlineText(this, \`${f.replacement_clause.replace(/`/g, "\\`")}\`)">
-              📋 Copy
-            </button>
+        <div style="background-color: rgba(180, 83, 9, 0.12); border: 1px solid rgba(245, 158, 11, 0.25); border-left: 3px solid #d97706; border-radius: 4px; padding: 10px 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="color: #f59e0b; font-weight: 700; font-size: 12px;">Suggested Redline Amendment:</span>
+            <button type="button" onclick="copyRedlineText(this, \`${f.replacement_clause.replace(/`/g, "\\`")}\`)" style="background: transparent; border: 1px solid #78350f; color: #f59e0b; padding: 2px 6px; border-radius: 4px; font-size: 10px; cursor: pointer;">📋 Copy</button>
           </div>
-          <p class="redline-text">"${f.replacement_clause}"</p>
+          <div style="color: #e2e8f0; font-size: 12px; line-height: 1.5;">
+            ${f.replacement_clause}
+          </div>
         </div>
       ` : ''}
     `;
