@@ -28,7 +28,7 @@ async function extractText(file) {
   }
 }
 
-// Built-in Super Easy-to-Understand Fallback Data
+// Resilient Fallback Data (Ultra-clear plain English)
 const fallbackResponse = {
   overall_score: 65,
   stats: {
@@ -40,18 +40,18 @@ const fallbackResponse = {
     red_percentage: 25,
     yellow_percentage: 25
   },
-  summary: "Out of 4 permissions checked, 2 are safe to sign immediately, 1 is a dangerous violation that must be changed, and 1 is a new request not in your rulebook that you can accept only with safe limits.",
+  summary: "Out of 4 permissions evaluated: 2 are safe to accept immediately, 1 is a direct violation requiring replacement, and 1 is an unlisted request requiring safety limits.",
   findings: [
     {
       id: "PERM-101",
       title: "Direct Database Root Access",
       signal: "RED",
       verdict: "DANGEROUS VIOLATION - REJECT",
-      vendor_request: "Vendor wants full admin access to your live Production database containing customer records.",
+      vendor_request: "Vendor wants full admin access to your live Production customer database for debugging.",
       rule_reference: "IT Security Rulebook - Section 4.2",
       rule_quote: "Direct vendor access to production databases is strictly prohibited under all circumstances.",
-      simple_why: "If the vendor gets hacked or makes a mistake, your real customer data will be leaked or deleted.",
-      decision_advice: "DO NOT ACCEPT. You must replace this clause with a safe sandbox test database.",
+      simple_why: "Direct production database access risks total customer data leakage and GDPR penalties.",
+      decision_advice: "DO NOT ACCEPT. Restrict vendor to staging environment only.",
       replacement_clause: "The Vendor shall only be granted temporary read-only access to an anonymized staging test environment with mandatory two-factor authentication."
     },
     {
@@ -61,9 +61,9 @@ const fallbackResponse = {
       verdict: "NOT IN RULES - PROCEED WITH CARE",
       vendor_request: "Vendor wants to join a single company Slack chat channel for day-to-day work updates.",
       rule_reference: "Missing from company rulebooks",
-      rule_quote: "None (Your rules do not talk about chat apps like Slack).",
-      simple_why: "This is convenient for fast communication, but if you don't set a time limit, vendor employees might stay in your chat forever.",
-      decision_advice: "CAN ACCEPT - But only if you automatically delete their guest access after 90 days and turn off file downloads.",
+      rule_quote: "None (Rules do not explicitly mention external chat collaboration).",
+      simple_why: "Convenient for fast sync, but unbounded access risks long-term account sprawl and file leaks.",
+      decision_advice: "CAN ACCEPT - Set a 90-day time limit and disable file downloads.",
       replacement_clause: "Vendor personnel may receive single-channel guest Slack access for 90 days only, with file export and external sharing permissions restricted."
     },
     {
@@ -74,8 +74,8 @@ const fallbackResponse = {
       vendor_request: "Vendor asks to get paid within 30 days after sending their monthly invoice (Net-30).",
       rule_reference: "Finance Rulebook - Rule 1.1",
       rule_quote: "All external vendor invoice payments must strictly adhere to Net-30 calendar days.",
-      simple_why: "This matches your company finance rulebook word-for-word.",
-      decision_advice: "SAFE TO APPROVE - No changes needed.",
+      simple_why: "Matches company finance bylaws word-for-word.",
+      decision_advice: "SAFE TO APPROVE - No amendments required.",
       replacement_clause: ""
     },
     {
@@ -83,11 +83,11 @@ const fallbackResponse = {
       title: "30-Day Contract Exit Notice",
       signal: "GREEN",
       verdict: "100% COMPLIANT - SAFE TO SIGN",
-      vendor_request: "Either your company or the vendor can cancel this contract by giving 30 days written notice.",
+      vendor_request: "Either company or vendor may terminate contract with thirty (30) days written notice.",
       rule_reference: "Legal Protocol - Section 5.1",
       rule_quote: "Standard termination notice periods shall require a minimum of thirty (30) calendar days notification.",
-      simple_why: "Gives both sides equal time to wrap up work cleanly without any financial penalty.",
-      decision_advice: "SAFE TO APPROVE - Standard safe practice.",
+      simple_why: "Provides equal safe transition time for both parties without financial penalties.",
+      decision_advice: "SAFE TO APPROVE - Standard bilateral protocol.",
       replacement_clause: ""
     }
   ]
@@ -96,7 +96,7 @@ const fallbackResponse = {
 async function executeMultiDocAudit(rulesCombinedText, vendorText) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey || apiKey.startsWith("AQ.") || apiKey.includes("your_gemini")) {
-    console.warn("[Backend Engine] Valid API key absent. Serving super-clear fallback audit.");
+    console.warn("[Backend Engine] Valid API key absent. Serving structured fallback audit.");
     return fallbackResponse;
   }
 
@@ -104,7 +104,7 @@ async function executeMultiDocAudit(rulesCombinedText, vendorText) {
     const ai = new GoogleGenAI({ apiKey });
 
     const auditPrompt = `
-You are an Enterprise Legal & Security Officer.
+You are an Enterprise Legal & Security Compliance Officer.
 Compare the TARGET VENDOR PERMISSIONS against ALL uploaded INTERNAL COMPANY RULEBOOKS.
 
 === COMPANY RULEBOOKS (Ground Truth) ===
@@ -113,7 +113,7 @@ ${rulesCombinedText}
 === TARGET VENDOR REQUESTS / CONTRACT ===
 ${vendorText}
 
-YOUR #1 GOAL: Explain every finding in EXTREMELY SIMPLE, PLAIN ENGLISH that a high-school student or junior analyst can instantly understand. Avoid heavy legal jargon.
+Explain every finding in EXTREMELY SIMPLE, PLAIN ENGLISH without complex jargon.
 
 Classify every item into 3 signals:
 1. RED: Dangerous Violation. Breaks a rule. Provide a ready-to-paste replacement clause.
@@ -142,15 +142,15 @@ Return strictly valid JSON only:
   "findings": [
     {
       "id": "<e.g., PERM-1>",
-      "title": "<Short plain English title, e.g. Payment Window>",
+      "title": "<Short plain title>",
       "signal": "RED" | "YELLOW" | "GREEN",
       "verdict": "<e.g., DANGEROUS VIOLATION - REJECT | NOT IN RULES - PROCEED WITH CARE | 100% COMPLIANT - SAFE TO SIGN>",
-      "vendor_request": "<What vendor is asking for in very simple terms>",
+      "vendor_request": "<What vendor is asking for>",
       "rule_reference": "<Which rule file and section, or 'Missing from company rulebooks'>",
       "rule_quote": "<Exact quote from company rules, or 'None'>",
-      "simple_why": "<1-2 clear, easy-to-understand sentences explaining why this signal was given>",
+      "simple_why": "<1-2 clear, easy sentences explaining why this signal was given>",
       "decision_advice": "<Clear decision: CAN ACCEPT WITH CONDITIONS / DO NOT ACCEPT / SAFE TO APPROVE>",
-      "replacement_clause": "<Simple ready-to-copy safe legal replacement sentence for RED or YELLOW, empty string if GREEN>"
+      "replacement_clause": "<Safe replacement clause for RED or YELLOW, empty string if GREEN>"
     }
   ]
 }
@@ -170,7 +170,7 @@ Return strictly valid JSON only:
 }
 
 app.post('/api/audit-multi', upload.fields([
-  { name: 'ruleFiles', maxCount: 15 },
+  { name: 'ruleFiles', maxCount: 20 },
   { name: 'vendorFile', maxCount: 1 }
 ]), async (req, res) => {
   try {
@@ -206,7 +206,7 @@ app.post('/api/audit', async (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: "online", engine: "ComplianceGuard v4.0 Ultra-Clear" });
+  res.json({ status: "online", engine: "ComplianceGuard v4.5 DirectPDF" });
 });
 
 const server = app.listen(PORT, '0.0.0.0', () => {

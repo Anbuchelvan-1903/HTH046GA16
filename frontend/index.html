@@ -5,12 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ComplianceGuard AI - Enterprise Permission & Policy Auditor</title>
   <link rel="stylesheet" href="style.css" />
+  <!-- html2pdf bundle for direct client-side PDF download -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
-  <!-- Toast Notification for Clipboard Copy -->
+  <!-- Toast Alert for Redline copy, Email copy & Duplicate Download -->
   <div id="toast" class="toast hidden">
-    <span class="toast-icon">✓</span>
-    <span id="toastMsg">Safe clause copied to clipboard!</span>
+    <span id="toastIcon" class="toast-icon">✓</span>
+    <span id="toastMsg">Action completed!</span>
   </div>
 
   <header class="app-header">
@@ -29,24 +31,29 @@
         <span id="themeLabel">Light Mode</span>
       </button>
 
-      <!-- Executive PDF Export Button -->
+      <!-- 1-Click Copy Vendor Counter Email -->
+      <button id="copyEmailBtn" class="btn btn-email hidden">
+        📩 Copy Vendor Email
+      </button>
+
+      <!-- Direct PDF Download Button -->
       <button id="downloadPdfBtn" class="btn btn-export hidden">
-        📄 Download Executive Audit PDF
+        ⬇️ Download Executive Audit PDF
       </button>
 
       <span class="status-indicator">● Engine Active</span>
     </div>
   </header>
 
-  <main class="grid-container" id="printableArea">
-    <!-- Left Pane: File Ingestion -->
-    <section class="pane input-pane no-print">
+  <main class="grid-container">
+    <!-- Left Pane: Ingestion & Uploads -->
+    <section class="pane input-pane">
       <div class="pane-header">
         <h2>Document Ingestion Zone</h2>
         <button id="loadSampleBtn" class="btn btn-secondary">⚡ Load Demo Datasets</button>
       </div>
 
-      <!-- Upload Zone 1: Multiple Company Rules -->
+      <!-- Upload Zone 1: Multiple Company Rules with Cumulative Adding -->
       <div class="upload-box" id="ruleDropZone">
         <div class="upload-label-row">
           <label>📁 Company Rulebooks (Add 3+ Files)</label>
@@ -54,7 +61,8 @@
         </div>
         <p class="upload-hint">Upload HR Policy, IT Security, Privacy Guidelines (.pdf, .txt)</p>
         <input type="file" id="ruleFilesInput" accept=".pdf,.txt" multiple class="file-input" />
-        <label for="ruleFilesInput" class="file-browse-btn">+ Choose Rule Files</label>
+        <!-- Dynamic Label: Changes from "+ Add file here" to "+ Add more files" -->
+        <label for="ruleFilesInput" id="ruleFilesBtnLabel" class="file-browse-btn">+ Add file here</label>
         <ul id="ruleFilesList" class="file-tags-list"></ul>
       </div>
 
@@ -66,7 +74,7 @@
         </div>
         <p class="upload-hint">Vendor Contract, Access Requests, or SLA (.pdf, .txt)</p>
         <input type="file" id="vendorFileInput" accept=".pdf,.txt" class="file-input" />
-        <label for="vendorFileInput" class="file-browse-btn">+ Choose Vendor File</label>
+        <label for="vendorFileInput" id="vendorFileBtnLabel" class="file-browse-btn">+ Add file here</label>
         <div id="vendorFileName" class="selected-vendor-file">No file chosen yet</div>
       </div>
 
@@ -75,21 +83,21 @@
       </button>
     </section>
 
-    <!-- Right Pane: Health Dashboard & Super-Clear Cards -->
-    <section class="pane output-pane">
+    <!-- Right Pane: Dashboard & Findings -->
+    <section class="pane output-pane" id="printableReport">
       <div class="pane-header">
         <h2>Compliance Health Dashboard</h2>
       </div>
 
-      <!-- Loading Screen with Pulse Spinner -->
-      <div id="loader" class="loader hidden no-print">
+      <!-- Loading Screen -->
+      <div id="loader" class="loader hidden">
         <div class="spinner"></div>
         <p class="loader-title">Cross-Grounding Permissions Against Rulebooks...</p>
         <p class="loader-sub">Comparing vendor requests, checking rule violations, and framing safe advice</p>
       </div>
 
       <!-- Initial Empty State -->
-      <div id="emptyState" class="empty-state no-print">
+      <div id="emptyState" class="empty-state">
         <div class="empty-icon">🛡️</div>
         <h3>No Document Audited Yet</h3>
         <p>Choose your rule files and vendor file, or click <strong>⚡ Load Demo Datasets</strong> and hit <strong>Run Cross-Document Compliance Audit</strong>.</p>
@@ -107,19 +115,19 @@
           </div>
 
           <div class="metric-card signal-card-green">
-            <span class="metric-title">🟢 Compliant (Safe)</span>
+            <span class="metric-title">🟢 Compliant</span>
             <div class="metric-val" id="greenPct">0%</div>
             <small id="greenCount">0 permissions</small>
           </div>
 
           <div class="metric-card signal-card-yellow">
-            <span class="metric-title">🟡 Tolerable (Review)</span>
+            <span class="metric-title">🟡 Tolerable</span>
             <div class="metric-val" id="yellowPct">0%</div>
             <small id="yellowCount">0 permissions</small>
           </div>
 
           <div class="metric-card signal-card-red">
-            <span class="metric-title">🔴 Violations (Danger)</span>
+            <span class="metric-title">🔴 Violations</span>
             <div class="metric-val" id="redPct">0%</div>
             <small id="redCount">0 permissions</small>
           </div>
@@ -137,7 +145,14 @@
           <p id="summaryText">Audit in progress...</p>
         </div>
 
-        <h3 class="section-title">Itemized Traffic Light Findings</h3>
+        <!-- Interactive Filter Tabs -->
+        <div class="filter-bar">
+          <span class="filter-label">Filter Findings:</span>
+          <button class="filter-tab active" data-filter="ALL">All (<span id="countAll">0</span>)</button>
+          <button class="filter-tab" data-filter="RED">🔴 Violations (<span id="countRed">0</span>)</button>
+          <button class="filter-tab" data-filter="YELLOW">🟡 Unlisted / Review (<span id="countYellow">0</span>)</button>
+          <button class="filter-tab" data-filter="GREEN">🟢 Compliant (<span id="countGreen">0</span>)</button>
+        </div>
       </div>
 
       <!-- Findings Cards List -->
