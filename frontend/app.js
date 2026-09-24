@@ -1,52 +1,115 @@
-const samplePolicy = `1. PAYMENT TERMS POLICY (Section 3.2):
-All external vendor payment terms must strictly not exceed Net-30 days from invoice date. Net-60 or Net-90 terms are strictly prohibited without written CFO pre-approval.
+// State variables for selected files
+let selectedRuleFiles = [];
+let selectedVendorFile = null;
 
-2. DATA PRIVACY & GDPR RETENTION (Section 5.1):
-Upon contract termination, all vendor-held company customer data must be permanently purged within thirty (30) calendar days, accompanied by an executive certificate of destruction.
+// Built-in Demo Data to allow instant 1-Click test without choosing files manually
+const DEMO_RULES = `[RULEBOOK 1: FINANCE & PAYMENT]
+Section 1.1: All external vendor payment terms must strictly not exceed Net-30 days from invoice date. Net-60 or Net-90 terms are strictly prohibited without written CFO approval.
 
-3. GOVERNING LAW & JURISDICTION (Section 9.4):
-All contracts must be governed by the laws of the State of Delaware, and disputes shall be resolved in Delaware courts.`;
+[RULEBOOK 2: IT DATA SECURITY & ACCESS]
+Section 4.2: Direct vendor access to production databases is strictly prohibited under all circumstances. Only anonymized staging DB access allowed with 2FA.
 
-const sampleContract = `CLAUSE 4.1 - INVOICING & PAYMENT:
-Company agrees to remit payment for all undisputed invoices within Net-90 calendar days following the receipt of invoice.
+[RULEBOOK 3: TERMINATION PROTOCOL]
+Section 5.1: Standard termination notice periods shall require a minimum of thirty (30) calendar days notification.`;
 
-CLAUSE 8.2 - TERMINATION NOTICE:
-Either party may terminate this agreement at any time with thirty (30) days prior written notice.
+const DEMO_VENDOR = `1. PAYMENT TERMS: The Client agrees to remit payment within Net-30 calendar days following invoice receipt.
+2. DATABASE ACCESS: Vendor requests full administrative root access to Production customer database for live debugging.
+3. CHAT COLLABORATION: Vendor requests single-channel guest membership in company Slack for asynchronous team communication.
+4. TERMINATION NOTICE: Either party may terminate this agreement at any time with thirty (30) days prior written notice.`;
 
-CLAUSE 12.4 - ARCHIVAL & BACKUP STORAGE:
-Upon termination of this agreement, Vendor may retain anonymized customer records in cold storage backup archives for up to 180 days for disaster recovery compliance.
+// DOM Elements
+const ruleFilesInput = document.getElementById('ruleFilesInput');
+const vendorFileInput = document.getElementById('vendorFileInput');
+const ruleFilesList = document.getElementById('ruleFilesList');
+const vendorFileName = document.getElementById('vendorFileName');
+const rulesCountBadge = document.getElementById('rulesCountBadge');
+const vendorCountBadge = document.getElementById('vendorCountBadge');
+const runAuditBtn = document.getElementById('runAuditBtn');
+const loadSampleBtn = document.getElementById('loadSampleBtn');
 
-CLAUSE 16.1 - GOVERNING LAW:
-This agreement shall be governed by, and construed in accordance with, the laws of the State of California.`;
+const loader = document.getElementById('loader');
+const emptyState = document.getElementById('emptyState');
+const dashboardSection = document.getElementById('dashboardSection');
+const resultsContainer = document.getElementById('resultsContainer');
 
-document.getElementById("loadSampleBtn").addEventListener("click", () => {
-  document.getElementById("policyInput").value = samplePolicy;
-  document.getElementById("contractInput").value = sampleContract;
+// Dashboard Elements
+const scoreValue = document.getElementById('scoreValue');
+const scoreLabel = document.getElementById('scoreLabel');
+const greenPct = document.getElementById('greenPct');
+const yellowPct = document.getElementById('yellowPct');
+const redPct = document.getElementById('redPct');
+const greenCount = document.getElementById('greenCount');
+const yellowCount = document.getElementById('yellowCount');
+const redCount = document.getElementById('redCount');
+const barGreen = document.getElementById('barGreen');
+const barYellow = document.getElementById('barYellow');
+const barRed = document.getElementById('barRed');
+const summaryText = document.getElementById('summaryText');
+
+// 1. Handle Multiple Rule Files Selection
+ruleFilesInput.addEventListener('change', (e) => {
+  selectedRuleFiles = Array.from(e.target.files);
+  renderRuleFilesList();
 });
 
-document.getElementById("runAuditBtn").addEventListener("click", async () => {
-  const policyText = document.getElementById("policyInput").value.trim();
-  const contractText = document.getElementById("contractInput").value.trim();
-  const container = document.getElementById("resultsContainer");
-  const loader = document.getElementById("loader");
-  const emptyState = document.getElementById("emptyState");
-  const stats = document.getElementById("summaryStats");
+function renderRuleFilesList() {
+  rulesCountBadge.textContent = `${selectedRuleFiles.length} files`;
+  ruleFilesList.innerHTML = selectedRuleFiles.map((file, idx) => `
+    <li class="file-tag-item">📄 Rule ${idx + 1}: ${file.name} (${Math.round(file.size / 1024)} KB)</li>
+  `).join('');
+}
 
-  if (!policyText || !contractText) {
-    alert("Please provide both Corporate Policy text and Target Contract clauses.");
+// 2. Handle Single Vendor Permission File Selection
+vendorFileInput.addEventListener('change', (e) => {
+  if (e.target.files.length > 0) {
+    selectedVendorFile = e.target.files[0];
+    vendorCountBadge.textContent = "1 file";
+    vendorFileName.textContent = `📑 ${selectedVendorFile.name} (${Math.round(selectedVendorFile.size / 1024)} KB)`;
+    vendorFileName.style.color = "#38bdf8";
+  }
+});
+
+// 3. 1-Click Demo Setup
+loadSampleBtn.addEventListener('click', () => {
+  const ruleBlob1 = new Blob([DEMO_RULES], { type: 'text/plain' });
+  const vendorBlob = new Blob([DEMO_VENDOR], { type: 'text/plain' });
+
+  selectedRuleFiles = [
+    new File([ruleBlob1], "Corporate_Rules_Consolidated.txt", { type: 'text/plain' }),
+    new File([ruleBlob1], "IT_Security_Policy_v3.txt", { type: 'text/plain' }),
+    new File([ruleBlob1], "Finance_Governance_Rulebook.txt", { type: 'text/plain' })
+  ];
+  selectedVendorFile = new File([vendorBlob], "Vendor_Access_Permissions_Req.txt", { type: 'text/plain' });
+
+  renderRuleFilesList();
+  vendorCountBadge.textContent = "1 file";
+  vendorFileName.textContent = `📑 ${selectedVendorFile.name}`;
+  vendorFileName.style.color = "#38bdf8";
+});
+
+// 4. Run Audit Button Action
+runAuditBtn.addEventListener('click', async () => {
+  if (selectedRuleFiles.length === 0 || !selectedVendorFile) {
+    alert("Please choose at least 1 Rule File (or 3+ files) and 1 Vendor Permission File, or click '⚡ Load Demo Datasets'!");
     return;
   }
 
-  emptyState.classList.add("hidden");
-  loader.classList.remove("hidden");
-  container.innerHTML = "";
-  stats.innerHTML = "";
+  emptyState.classList.add('hidden');
+  dashboardSection.classList.add('hidden');
+  resultsContainer.innerHTML = '';
+  loader.classList.remove('hidden');
+  runAuditBtn.disabled = true;
+
+  const formData = new FormData();
+  selectedRuleFiles.forEach(file => {
+    formData.append('ruleFiles', file);
+  });
+  formData.append('vendorFile', selectedVendorFile);
 
   try {
-    const response = await fetch("http://localhost:8000/api/audit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contract_text: contractText, policy_text: policyText }),
+    const response = await fetch('http://localhost:8000/api/audit-multi', {
+      method: 'POST',
+      body: formData
     });
 
     if (!response.ok) {
@@ -54,58 +117,85 @@ document.getElementById("runAuditBtn").addEventListener("click", async () => {
     }
 
     const data = await response.json();
-    loader.classList.add("hidden");
-
-    stats.innerHTML = `
-      Total Clauses: <strong>${data.total_clauses}</strong> | 
-      <span style="color:#ef4444;">Conflicts: <strong>${data.conflicts_detected}</strong></span>
-    `;
-
-    data.results.forEach((item) => {
-      const card = document.createElement("div");
-      card.className = `card ${item.status}`;
-
-      card.innerHTML = `
-        <div class="card-header">
-          <strong>${item.clause_id}</strong>
-          <div class="badge-row">
-            <span class="badge ${item.status}">${item.status}</span>
-            <span class="confidence-tag">${item.confidence.replace("_", " ")}</span>
-          </div>
-        </div>
-
-        <div class="clause-text">
-          "${item.clause_text}"
-        </div>
-
-        <div class="explanation">
-          <strong>Finding:</strong> ${item.explanation}
-        </div>
-
-        ${
-          item.policy_quote && item.policy_quote !== "N/A"
-            ? `<div class="quote-box">
-                 <strong>Policy Citation (${item.policy_reference}):</strong><br/>
-                 "${item.policy_quote}"
-               </div>`
-            : ""
-        }
-
-        ${
-          item.suggested_redline
-            ? `<div class="redline-box">
-                 <strong>Suggested Redline Amendment:</strong><br/>
-                 ${item.suggested_redline}
-               </div>`
-            : ""
-        }
-      `;
-
-      container.appendChild(card);
-    });
+    renderDashboardAndCards(data);
   } catch (error) {
-    loader.classList.add("hidden");
-    emptyState.classList.remove("hidden");
-    alert("Connection Error: " + error.message + "\nEnsure the backend server is running on port 8000.");
+    console.error("Audit error:", error);
+    alert("Connection Error: Backend server is not responding at http://localhost:8000. Run 'node server.js' first.");
+    emptyState.classList.remove('hidden');
+  } finally {
+    loader.classList.add('hidden');
+    runAuditBtn.disabled = false;
   }
 });
+
+// 5. Render Visual Dashboard & Traffic Light Cards
+function renderDashboardAndCards(data) {
+  dashboardSection.classList.remove('hidden');
+
+  const stats = data.stats || {};
+  const score = data.overall_score ?? 65;
+  const gPct = Math.round(stats.green_percentage ?? 50);
+  const yPct = Math.round(stats.yellow_percentage ?? 25);
+  const rPct = Math.round(stats.red_percentage ?? 25);
+
+  scoreValue.textContent = score;
+  scoreLabel.textContent = score >= 80 ? "HEALTHY" : (score >= 50 ? "MODERATE RISK" : "CRITICAL RISK");
+  scoreLabel.style.color = score >= 80 ? "#4ade80" : (score >= 50 ? "#facc15" : "#f87171");
+
+  greenPct.textContent = `${gPct}%`;
+  yellowPct.textContent = `${yPct}%`;
+  redPct.textContent = `${rPct}%`;
+
+  greenCount.textContent = `${stats.green_count ?? 0} compliant`;
+  yellowCount.textContent = `${stats.yellow_count ?? 0} tolerable`;
+  redCount.textContent = `${stats.red_count ?? 0} violations`;
+
+  // Animate progress segments
+  barGreen.style.width = `${gPct}%`;
+  barYellow.style.width = `${yPct}%`;
+  barRed.style.width = `${rPct}%`;
+
+  summaryText.textContent = data.summary || "Audit complete.";
+
+  const findings = data.findings || [];
+  resultsContainer.innerHTML = findings.map(item => {
+    const signalClass = item.signal || 'YELLOW';
+    const icon = signalClass === 'RED' ? '🔴' : (signalClass === 'YELLOW' ? '🟡' : '🟢');
+
+    return `
+      <div class="card ${signalClass}">
+        <div class="card-header">
+          <strong>${icon} ${item.title || item.id}</strong>
+          <span class="badge ${signalClass}">${item.verdict || signalClass}</span>
+        </div>
+
+        <div class="field-block">
+          <span class="field-label">VENDOR PERMISSION REQUEST:</span>
+          <div>"${item.vendor_request}"</div>
+        </div>
+
+        ${item.rule_quote && item.rule_quote !== 'None' ? `
+          <div class="field-block">
+            <span class="field-label">MATCHED POLICY (${item.rule_reference}):</span>
+            <div class="quote-box">"${item.rule_quote}"</div>
+          </div>
+        ` : `
+          <div class="field-block">
+            <span class="field-label">POLICY STATUS:</span>
+            <div style="color: #facc15; font-size: 0.8rem;">⚠️ Not defined in any of your uploaded rulebooks.</div>
+          </div>
+        `}
+
+        <div class="field-block">
+          <span class="field-label">WHY / COMPLIANCE ANALYSIS:</span>
+          <div style="color: #cbd5e1;">${item.why_analysis}</div>
+        </div>
+
+        <div class="suggestion-box">
+          <strong>Actionable Suggestion:</strong><br/>
+          ${item.suggestion}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
