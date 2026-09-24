@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,48 +7,66 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <!-- Toast Notification for Clipboard Copy -->
+  <div id="toast" class="toast hidden">
+    <span class="toast-icon">✓</span>
+    <span id="toastMsg">Safe clause copied to clipboard!</span>
+  </div>
+
   <header class="app-header">
     <div class="brand">
-      <div class="logo-circle">CG</div>
+      <div class="logo-shield">CG</div>
       <div>
         <h1>ComplianceGuard AI</h1>
         <p class="subtitle">Multi-Rule Cross-Document Permission Auditor</p>
       </div>
     </div>
-    <div class="header-right">
-      <span class="status-indicator">● Traffic-Light RAG Engine Active</span>
+    
+    <div class="header-actions">
+      <!-- Dark / Light Mode Toggle -->
+      <button id="themeToggleBtn" class="theme-toggle" title="Switch Theme">
+        <span id="themeIcon">☀️</span>
+        <span id="themeLabel">Light Mode</span>
+      </button>
+
+      <!-- Executive PDF Export Button -->
+      <button id="downloadPdfBtn" class="btn btn-export hidden">
+        📄 Download Executive Audit PDF
+      </button>
+
+      <span class="status-indicator">● Engine Active</span>
     </div>
   </header>
 
-  <main class="grid-container">
-    <!-- Left Pane: Multi-Document Ingestion Controls -->
-    <section class="pane input-pane">
+  <main class="grid-container" id="printableArea">
+    <!-- Left Pane: File Ingestion -->
+    <section class="pane input-pane no-print">
       <div class="pane-header">
         <h2>Document Ingestion Zone</h2>
         <button id="loadSampleBtn" class="btn btn-secondary">⚡ Load Demo Datasets</button>
       </div>
 
-      <!-- Upload Zone 1: Multiple Policy & Rulebooks -->
-      <div class="upload-box">
+      <!-- Upload Zone 1: Multiple Company Rules -->
+      <div class="upload-box" id="ruleDropZone">
         <div class="upload-label-row">
-          <label>📁 Internal Company Rulebooks (Add 3+ Files)</label>
+          <label>📁 Company Rulebooks (Add 3+ Files)</label>
           <span class="badge-count" id="rulesCountBadge">0 files</span>
         </div>
         <p class="upload-hint">Upload HR Policy, IT Security, Privacy Guidelines (.pdf, .txt)</p>
         <input type="file" id="ruleFilesInput" accept=".pdf,.txt" multiple class="file-input" />
-        <label for="ruleFilesInput" class="file-browse-btn">Browse Rule Files</label>
+        <label for="ruleFilesInput" class="file-browse-btn">+ Choose Rule Files</label>
         <ul id="ruleFilesList" class="file-tags-list"></ul>
       </div>
 
       <!-- Upload Zone 2: Vendor Permission File -->
-      <div class="upload-box vendor-box">
+      <div class="upload-box vendor-box" id="vendorDropZone">
         <div class="upload-label-row">
           <label>📑 Vendor Permission File (1 File)</label>
           <span class="badge-count" id="vendorCountBadge">0 file</span>
         </div>
-        <p class="upload-hint">Vendor Contract, API Access Requests, or SLA (.pdf, .txt)</p>
+        <p class="upload-hint">Vendor Contract, Access Requests, or SLA (.pdf, .txt)</p>
         <input type="file" id="vendorFileInput" accept=".pdf,.txt" class="file-input" />
-        <label for="vendorFileInput" class="file-browse-btn">Browse Vendor Request</label>
+        <label for="vendorFileInput" class="file-browse-btn">+ Choose Vendor File</label>
         <div id="vendorFileName" class="selected-vendor-file">No file chosen yet</div>
       </div>
 
@@ -57,67 +75,72 @@
       </button>
     </section>
 
-    <!-- Right Pane: Executive Visual Dashboard & Traffic Light Cards -->
+    <!-- Right Pane: Health Dashboard & Super-Clear Cards -->
     <section class="pane output-pane">
       <div class="pane-header">
         <h2>Compliance Health Dashboard</h2>
       </div>
 
-      <!-- Loading State -->
-      <div id="loader" class="loader hidden">
+      <!-- Loading Screen with Pulse Spinner -->
+      <div id="loader" class="loader hidden no-print">
         <div class="spinner"></div>
-        <p>Grounding vendor requests against internal rulebooks...</p>
+        <p class="loader-title">Cross-Grounding Permissions Against Rulebooks...</p>
+        <p class="loader-sub">Comparing vendor requests, checking rule violations, and framing safe advice</p>
       </div>
 
-      <!-- Empty State -->
-      <div id="emptyState" class="empty-state">
+      <!-- Initial Empty State -->
+      <div id="emptyState" class="empty-state no-print">
         <div class="empty-icon">🛡️</div>
-        <h3>No Audit Executed Yet</h3>
-        <p>Upload your rulebooks and vendor permission file, or click <strong>⚡ Load Demo Datasets</strong> and hit <strong>Run Cross-Document Compliance Audit</strong>.</p>
+        <h3>No Document Audited Yet</h3>
+        <p>Choose your rule files and vendor file, or click <strong>⚡ Load Demo Datasets</strong> and hit <strong>Run Cross-Document Compliance Audit</strong>.</p>
       </div>
 
-      <!-- Dashboard Visual Metrics Container -->
+      <!-- Visual Metric Dashboard -->
       <div id="dashboardSection" class="hidden">
         <div class="metrics-grid">
           <div class="metric-card score-card">
-            <span class="metric-title">Health Score</span>
+            <span class="metric-title">Safety Score</span>
             <div class="score-display">
               <span id="scoreValue">0</span><small>/100</small>
             </div>
-            <span id="scoreLabel" class="score-badge">Evaluating</span>
+            <span id="scoreLabel" class="score-badge">EVALUATING</span>
           </div>
 
           <div class="metric-card signal-card-green">
-            <span class="metric-title">🟢 Compliant</span>
+            <span class="metric-title">🟢 Compliant (Safe)</span>
             <div class="metric-val" id="greenPct">0%</div>
             <small id="greenCount">0 permissions</small>
           </div>
 
           <div class="metric-card signal-card-yellow">
-            <span class="metric-title">🟡 Tolerable / Unlisted</span>
+            <span class="metric-title">🟡 Tolerable (Review)</span>
             <div class="metric-val" id="yellowPct">0%</div>
             <small id="yellowCount">0 permissions</small>
           </div>
 
           <div class="metric-card signal-card-red">
-            <span class="metric-title">🔴 Rule Violations</span>
+            <span class="metric-title">🔴 Violations (Danger)</span>
             <div class="metric-val" id="redPct">0%</div>
             <small id="redCount">0 permissions</small>
           </div>
         </div>
 
-        <!-- Visual Multi-Color Progress Bar -->
+        <!-- Segmented Colored Progress Bar -->
         <div class="progress-bar-container">
           <div class="progress-segment seg-green" id="barGreen" style="width: 0%;"></div>
           <div class="progress-segment seg-yellow" id="barYellow" style="width: 0%;"></div>
           <div class="progress-segment seg-red" id="barRed" style="width: 0%;"></div>
         </div>
 
-        <p id="summaryText" class="executive-summary"></p>
+        <div class="executive-summary">
+          <strong>Executive Takeaway:</strong>
+          <p id="summaryText">Audit in progress...</p>
+        </div>
+
         <h3 class="section-title">Itemized Traffic Light Findings</h3>
       </div>
 
-      <!-- Dynamic Findings Cards -->
+      <!-- Findings Cards List -->
       <div id="resultsContainer" class="cards-list"></div>
     </section>
   </main>
