@@ -1,0 +1,15 @@
+================================================================================
+MASTER SERVICES AGREEMENT (VENDOR: CLOUDSERVICES INC.)
+================================================================================
+
+CLAUSE 1.1 - INVOICE & PAYMENT TERMS
+The Client agrees to remit payment for all undisputed invoices within Net-90 calendar days from the invoice date.
+
+CLAUSE 2.2 - TERMINATION CONVENIENCE
+Either party may terminate this agreement at any time by issuing thirty (30) days advance written notice.
+
+CLAUSE 3.3 - DATA RETENTION & ARCHIVE
+Following the termination of this agreement, the Vendor reserves the right to retain encrypted copies of client records in cold storage backups for up to 180 days for disaster recovery audit purposes.
+
+CLAUSE 4.4 - GOVERNING LAW & VENUE
+This agreement shall be interpreted, governed by, and construed in accordance with the laws of the State of California, with exclusive venue in San Francisco County.

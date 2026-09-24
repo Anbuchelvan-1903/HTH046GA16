@@ -1,0 +1,16 @@
+================================================================================
+GLOBAL ENTERPRISE RISK & COMPLIANCE POLICY RULEBOOK (v4.2)
+================================================================================
+
+POLICY SECTION 1: VENDOR PAYMENT TERMS (RULE 1.1)
+All external vendor invoice payments must strictly adhere to Net-30 calendar days. 
+Any term exceeding Net-30 (such as Net-60 or Net-90) is strictly prohibited without prior written CFO authorization.
+
+POLICY SECTION 2: CUSTOMER DATA PRIVACY & DESTRUCTION (RULE 2.4)
+Upon contract termination, vendors must permanently purge and delete all company confidential data and customer records within thirty (30) calendar days. Data retention exceeding 30 days or cold storage backups past this period are strictly disallowed.
+
+POLICY SECTION 3: JURISDICTION & GOVERNING LAW (RULE 3.1)
+All enterprise agreements must be governed solely by the laws of the State of Delaware. Disputes must be handled in Delaware state or federal courts. California or foreign jurisdictions are not permitted.
+
+POLICY SECTION 4: STANDARD TERMINATION PROTOCOL (RULE 4.5)
+Either party may terminate the agreement for convenience by providing a minimum of thirty (30) days prior written notice.
