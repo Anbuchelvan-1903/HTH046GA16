@@ -4,25 +4,117 @@ let currentAuditData = null;
 let isCurrentDashboardDownloaded = false;
 let currentUser = null;
 let authMode = 'login';
+let currentDemoIndex = 0;
 
-// Guest mode: 3 files max | Logged in: 5 files max
+// Maximum rules limits: Guest = 3, Logged-in = 5
 function getMaxRuleFiles() {
   return currentUser ? 5 : 3;
 }
 
-const DEMO_RULES = `[RULEBOOK 1: FINANCE RULES]
-Rule 1.1: All external vendor payment terms must strictly not exceed Net-30 days from invoice date. Net-60 or Net-90 terms are strictly forbidden.
+// 3 Distinct Industry Alternates for Demo
+const DEMO_SCENARIOS = [
+  // ----------------- SCENARIO 1: CLOUD & ENTERPRISE IT -----------------
+  {
+    tag: "Cloud & Enterprise IT",
+    rules: [
+      {
+        name: "IT_Security_Rulebook.txt",
+        content: `[IT SECURITY POLICY - 2026]
+Section 1.4: Direct external SSH tunneling or root administrative access to production customer database clusters is strictly forbidden under all circumstances. External engineers must use sanitized staging environments with mandatory MFA.
+Section 3.1: External contractors must be confined to single-channel guest isolation on corporate Slack. Access to company-wide channels is prohibited.`
+      },
+      {
+        name: "Corporate_Procurement_Bylaws.txt",
+        content: `[PROCUREMENT REGULATIONS]
+Rule 2.1: Invoices shall be processed strictly on Net-30 calendar day payment terms from undisputed receipt. Net-60 or Net-90 terms require board approval.
+Rule 4.5: Liquidated damages of 1.5% per week shall apply for unapproved vendor sprint delivery delays.`
+      },
+      {
+        name: "Legal_Termination_Protocol.txt",
+        content: `[LEGAL STANDARDS]
+Clause 4.1: Either party may terminate engagement without cause by tendering a minimum of thirty (30) days prior written notice.
+Clause 5.2: Enterprise liability shall not exceed 100% of aggregate fees paid over the preceding 12 months. Unlimited indemnity requests are strictly prohibited.`
+      }
+    ],
+    vendor: {
+      name: "Apex_Cloud_Infrastructure_MSA.txt",
+      content: `[APEX CLOUD - MASTER SERVICES AGREEMENT]
+1. Root DB Access: Vendor engineers request unrestricted root credentials to live production database for continuous diagnostics.
+2. Payment Window: Client agrees to remit payment within Net-30 calendar days following invoice receipt.
+3. Indemnity: Client assumes unlimited financial liability for operational downtime claims.
+4. Collaboration: Vendor requests access to company-wide general Slack channels for direct team sync.
+5. Exit Notice: Either party may dissolve agreement upon thirty (30) days prior written notice.`
+    }
+  },
 
-[RULEBOOK 2: IT DATA SECURITY POLICY]
-Rule 4.2: Direct vendor access to live production databases is strictly forbidden. Vendors can only test against anonymized test/staging environments with 2FA.
+  // ----------------- SCENARIO 2: FINTECH & PAYMENT GATEWAY -----------------
+  {
+    tag: "FinTech & Payment Gateway",
+    rules: [
+      {
+        name: "Cardholder_Data_Privacy_Policy.txt",
+        content: `[FINANCIAL DATA BYLAWS]
+Article 5: External vendors are strictly prohibited from caching unmasked cardholder numbers, CVV codes, or Aadhaar credentials on external servers. All data must be tokenized.
+Article 8: Enterprise maintains right to conduct unannounced on-site security inspections semi-annually.`
+      },
+      {
+        name: "Vendor_Subcontracting_Protocol.txt",
+        content: `[VENDOR RISK PROTOCOL]
+Policy 3.2: Pull requests must be submitted exclusively through restricted fork repositories with mandatory peer reviews. Direct commit access is banned.
+Policy 6.1: Subcontracting or delegating development to third-party offshore entities requires advance written approval from Chief Risk Officer.`
+      },
+      {
+        name: "Procurement_SLA_Terms.txt",
+        content: `[SLA SPECIFICATIONS]
+Section 1.1: Payment gateway webhooks must guarantee monthly operational uptime of not less than 99.95%.
+Section 2.3: Security breaches or credential leaks must be reported to enterprise CISO within four (4) hours of discovery.`
+      }
+    ],
+    vendor: {
+      name: "PayFlow_Payment_Gateway_Proposal.txt",
+      content: `[PAYFLOW - GATEWAY INTEGRATION PERMISSIONS]
+1. Card Caching: PayFlow reserves the right to cache unmasked cardholder details on edge servers for forty-five (45) days.
+2. Service Availability: PayFlow guarantees infrastructure uptime commitment of 99.95% on webhook endpoints.
+3. Incident Reporting: Written notice of security compromises will be supplied within seventy-two (72) hours of confirmation.
+4. Repository Access: Integration engineers will push code via staging fork repositories with zero direct production commits.
+5. Offshore Support: PayFlow reserves discretion to delegate maintenance to its Philippine subsidiary without prior written notice.`
+    }
+  },
 
-[RULEBOOK 3: CONTRACT TERMINATION]
-Rule 5.1: Standard termination notice periods shall require a minimum of thirty (30) calendar days notification.`;
-
-const DEMO_VENDOR = `1. PAYMENT WINDOW: The Client agrees to remit payment within Net-30 calendar days following invoice receipt.
-2. DATABASE ACCESS: Vendor requests full administrative root access to Production customer database for live debugging.
-3. CHAT APP COLLABORATION: Vendor requests single-channel guest membership in company Slack for asynchronous team communication.
-4. CONTRACT TERMINATION: Either party may terminate this agreement at any time with thirty (30) days prior written notice.`;
+  // ----------------- SCENARIO 3: HEALTHCARE & PATIENT DATA (HIPAA) -----------------
+  {
+    tag: "Healthcare & HIPAA Compliance",
+    rules: [
+      {
+        name: "HIPAA_Patient_Privacy_Rule.txt",
+        content: `[PATIENT PRIVACY POLICY]
+Rule 1.2: Protected Health Information (PHI) must be stored in encrypted repositories within national boundaries and cannot be exported for commercial AI training.
+Rule 2.4: Business Associates must sign bilateral Business Associate Agreements (BAA) prior to accessing any clinical diagnostic logs.`
+      },
+      {
+        name: "Medical_Device_Integration_Protocol.txt",
+        content: `[DEVICE INTEGRATION STANDARDS]
+Section 4.1: Remote firmware updates or diagnostic telemetry collection on bedside monitor systems require dual-authorization by attending clinical leads.
+Section 4.3: Real-time telemetry communication must be encrypted via TLS 1.3 protocol.`
+      },
+      {
+        name: "Enterprise_Audit_Bylaws.txt",
+        content: `[COMPLIANCE AUDIT REQUIREMENTS]
+Clause 3.1: Vendor shall provide verifiable SOC2 Type II compliance reports and audit logs annually upon enterprise request.
+Clause 7.2: Termination for breach of clinical patient confidentiality shall be instantaneous with complete zero-delay credential revocation.`
+      }
+    ],
+    vendor: {
+      name: "MediSync_Health_Analytics_Agreement.txt",
+      content: `[MEDISYNC - CLINICAL ANALYTICS PROPOSAL]
+1. Data Utilization: MediSync reserves non-exclusive rights to aggregate de-identified diagnostic images for external model training.
+2. Compliance BAA: MediSync agrees to execute standard bilateral Business Associate Agreement prior to data ingestion.
+3. Remote Firmware Access: MediSync technicians may push continuous telemetry updates to bedside monitors without onsite clinician verification.
+4. Security Standards: Telemetry streams use industry-standard TLS 1.3 encryption.
+5. Audit Limitations: MediSync internal server logs are proprietary and exempt from third-party client audit inspection.`
+    }
+  }
+];
 
 // DOM Selectors
 const authSection = document.getElementById('authSection');
@@ -119,7 +211,7 @@ themeToggleBtn.addEventListener('click', () => {
   }
 });
 
-// 3. AUTH MODAL
+// 3. Auth Modal Actions
 loginBtn.addEventListener('click', () => openAuthModal('login'));
 signupBtn.addEventListener('click', () => openAuthModal('signup'));
 closeModalBtn.addEventListener('click', () => authModal.classList.add('hidden'));
@@ -176,13 +268,11 @@ modalSubmitBtn.addEventListener('click', async () => {
     authModal.classList.add('hidden');
     renderUserSession();
 
-    // Show 3-second auto-load popup for existing user
     if (currentUser.savedRules && currentUser.savedRules.length > 0) {
       showToast("Existing User: Saved company rulebooks are auto-loaded from your account.", false, 3000);
     } else {
       showToast(`Welcome, ${currentUser.username}! You can now upload up to 5 rule files.`, false, 3000);
     }
-
   } catch (err) {
     alert(err.message);
   }
@@ -287,7 +377,7 @@ saveRulesToAccountBtn.addEventListener('click', async () => {
   }
 });
 
-// 5. CUMULATIVE RULE FILES UPLOAD (With limits: Guest 3, User 5)
+// 5. Cumulative Rule Files Upload (Guest 3, Logged-in 5)
 ruleFilesInput.addEventListener('change', (e) => {
   const newlySelected = Array.from(e.target.files);
   const maxLimit = getMaxRuleFiles();
@@ -329,7 +419,7 @@ window.removeRuleFile = function(index) {
   updateRuleFilesUI();
 };
 
-// 6. VENDOR FILE UPLOAD
+// 6. Vendor File Upload
 vendorFileInput.addEventListener('change', (e) => {
   if (e.target.files.length > 0) {
     selectedVendorFile = e.target.files[0];
@@ -340,28 +430,33 @@ vendorFileInput.addEventListener('change', (e) => {
   vendorFileInput.value = '';
 });
 
-// 7. DEMO DATASETS
+// 7. Multi-Scenario Dynamic Demo Datasets (Cycles 3 Industries)
 loadSampleBtn.addEventListener('click', () => {
-  const ruleBlob = new Blob([DEMO_RULES], { type: 'text/plain' });
-  const vendorBlob = new Blob([DEMO_VENDOR], { type: 'text/plain' });
+  const scenario = DEMO_SCENARIOS[currentDemoIndex];
 
-  selectedRuleFiles = [
-    new File([ruleBlob], "Finance_Standard_Policy.txt", { type: 'text/plain' }),
-    new File([ruleBlob], "IT_Security_Rulebook.txt", { type: 'text/plain' }),
-    new File([ruleBlob], "Corporate_Governance_Bylaws.txt", { type: 'text/plain' })
-  ];
-  selectedVendorFile = new File([vendorBlob], "Vendor_Permission_Requests.txt", { type: 'text/plain' });
+  selectedRuleFiles = scenario.rules.map(r => {
+    const blob = new Blob([r.content], { type: 'text/plain' });
+    return new File([blob], r.name, { type: 'text/plain' });
+  });
+
+  const vBlob = new Blob([scenario.vendor.content], { type: 'text/plain' });
+  selectedVendorFile = new File([vBlob], scenario.vendor.name, { type: 'text/plain' });
 
   updateRuleFilesUI();
-  vendorFileName.textContent = `📑 ${selectedVendorFile.name}`;
+  vendorFileName.textContent = `📑 ${selectedVendorFile.name} (${Math.round(selectedVendorFile.size / 1024)} KB)`;
   vendorFileName.style.color = "var(--brand-blue)";
   vendorFileBtnLabel.textContent = "+ Replace vendor file";
+
   if (currentUser) {
     saveRulesToAccountBtn.classList.remove('hidden');
   }
+
+  showToast(`Loaded Alternate ${currentDemoIndex + 1} of 3: ${scenario.tag}`, false, 2500);
+
+  currentDemoIndex = (currentDemoIndex + 1) % DEMO_SCENARIOS.length;
 });
 
-// 8. RUN AUDIT ACTION
+// 8. Run Audit Action
 runAuditBtn.addEventListener('click', async () => {
   const hasSavedRules = currentUser && currentUser.savedRules && currentUser.savedRules.length > 0;
   if (!hasSavedRules && selectedRuleFiles.length === 0) {
@@ -395,16 +490,16 @@ runAuditBtn.addEventListener('click', async () => {
     });
 
     if (!response.ok) {
-      throw new Error(`Server returned status: ${response.status}`);
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || `Server returned status: ${response.status}`);
     }
 
     currentAuditData = await response.json();
     isCurrentDashboardDownloaded = false;
     renderDashboardAndCards(currentAuditData);
-
   } catch (error) {
     console.error("Audit error:", error);
-    alert("Connection Error: Backend server is not responding at http://localhost:8000. Run 'node server.js' first.");
+    alert(`Audit Error: ${error.message}`);
     emptyState.classList.remove('hidden');
   } finally {
     loader.classList.add('hidden');
@@ -412,7 +507,7 @@ runAuditBtn.addEventListener('click', async () => {
   }
 });
 
-// 9. RENDER DASHBOARD & CARDS WITH REALISTIC 1-DECIMAL PERCENTAGES
+// 9. Render Dashboard & Cards with Realistic 1-Decimal Values
 function renderDashboardAndCards(data) {
   dashboardSection.classList.remove('hidden');
 
@@ -525,7 +620,7 @@ window.copyClause = function(encodedText) {
   });
 };
 
-// 10. COPY VENDOR EMAIL
+// 10. Copy Vendor Counter-Notice Email
 copyEmailBtn.addEventListener('click', () => {
   if (!currentAuditData) {
     alert("Please run an audit first to generate vendor counter-notice email.");
@@ -563,14 +658,13 @@ copyEmailBtn.addEventListener('click', () => {
   });
 });
 
-// 11. DIRECT CLEAN MINIMALIST PDF DOWNLOAD (NO ACTION BUTTONS, STRICT SECOND-TIME PROTECTION)
+// 11. Minimalist Clean PDF Download with Strict Duplicate Lock
 downloadPdfBtn.addEventListener('click', () => {
   if (!currentAuditData) {
     alert("Please run an audit first before downloading PDF report.");
     return;
   }
 
-  // Duplicate check
   if (isCurrentDashboardDownloaded) {
     showToast("Already downloaded!", true, 2000);
     return;
@@ -579,8 +673,6 @@ downloadPdfBtn.addEventListener('click', () => {
   showToast("Preparing executive printable PDF...", false, 1500);
 
   const element = document.getElementById('printableReport');
-  
-  // Temporarily apply clean monochrome/minimalist printable styles
   element.classList.add('pdf-export-mode');
 
   const opt = {
