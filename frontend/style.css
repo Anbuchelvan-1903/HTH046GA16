@@ -1,0 +1,289 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+body {
+  background-color: #0b1120;
+  color: #f8fafc;
+  min-height: 100vh;
+}
+
+/* Header */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: #111827;
+  border-bottom: 1px solid #1f2937;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.brand h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #38bdf8;
+}
+
+.badge-track {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 9999px;
+  background: #1e293b;
+  color: #94a3b8;
+  border: 1px solid #334155;
+}
+
+.status-indicator {
+  font-size: 0.85rem;
+  color: #22c55e;
+  font-weight: 500;
+}
+
+/* Main Grid */
+.grid-container {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  height: calc(100vh - 65px);
+}
+
+.pane {
+  background: #111827;
+  border-radius: 8px;
+  border: 1px solid #1f2937;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.pane-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.pane-header h2 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+/* Form Inputs */
+.input-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+}
+
+.label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.4rem;
+}
+
+label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.subtext {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+textarea {
+  width: 100%;
+  height: 180px;
+  background: #0b1120;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #f1f5f9;
+  padding: 0.85rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: #38bdf8;
+}
+
+/* Buttons */
+.btn {
+  padding: 0.65rem 1.25rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: #0284c7;
+  color: #ffffff;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.btn-primary:hover {
+  background: #0369a1;
+}
+
+.btn-secondary {
+  background: #1e293b;
+  color: #cbd5e1;
+  border: 1px solid #334155;
+}
+
+.btn-secondary:hover {
+  background: #334155;
+}
+
+/* Output Cards */
+.summary-stats {
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.card {
+  background: #0b1120;
+  border-radius: 8px;
+  padding: 1.25rem;
+  border-left: 4px solid #64748b;
+  border-top: 1px solid #1f2937;
+  border-right: 1px solid #1f2937;
+  border-bottom: 1px solid #1f2937;
+}
+
+.card.CONFLICT { border-left-color: #ef4444; }
+.card.COMPLIANT { border-left-color: #22c55e; }
+.card.NOT_FOUND { border-left-color: #64748b; }
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.card-header strong {
+  font-size: 0.95rem;
+  color: #f8fafc;
+}
+
+.badge-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.badge.CONFLICT { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+.badge.COMPLIANT { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+.badge.NOT_FOUND { background: rgba(100, 116, 139, 0.15); color: #94a3b8; }
+
+.confidence-tag {
+  font-size: 0.75rem;
+  background: #1e293b;
+  color: #94a3b8;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+.clause-text {
+  font-size: 0.85rem;
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.6rem;
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+  line-height: 1.4;
+}
+
+.explanation {
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  margin-bottom: 0.75rem;
+  line-height: 1.4;
+}
+
+.quote-box {
+  background: #132338;
+  border-left: 2px solid #38bdf8;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.8rem;
+  color: #bae6fd;
+  border-radius: 0 4px 4px 0;
+  margin-bottom: 0.5rem;
+}
+
+.redline-box {
+  background: #2a140e;
+  border-left: 2px solid #f97316;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.8rem;
+  color: #fed7aa;
+  border-radius: 0 4px 4px 0;
+}
+
+/* States */
+.empty-state {
+  text-align: center;
+  color: #64748b;
+  margin-top: 4rem;
+  font-size: 0.9rem;
+}
+
+.hidden { display: none; }
+
+.loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4rem;
+  gap: 1rem;
+  color: #38bdf8;
+  font-size: 0.9rem;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #1e293b;
+  border-top-color: #38bdf8;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

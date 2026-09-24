@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ComplianceGuard AI - Multi-Document Audit Engine</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <h1>ComplianceGuard AI</h1>
+      
+    </div>
+    <div class="header-ri
+      <span class="status-indicator">● Engine Active</span>
+    </div>
+  </header>
+
+  <main class="grid-container">
+    <!-- Left Pane: Input Sources -->
+    <section class="pane input-pane">
+      <div class="pane-header">
+        <h2>Document Ingestion</h2>
+        <button id="loadSampleBtn" class="btn btn-secondary">Load Sample Data</button>
+      </div>
+
+      <div class="input-group">
+        <div class="label-row">
+          <label for="policyInput">Internal Corporate Policies</label>
+          <span class="subtext">Finance, Privacy & Governance Rulebooks</span>
+        </div>
+        <textarea id="policyInput" placeholder="Paste your corporate policy manuals, sections, and rules here..."></textarea>
+      </div>
+
+      <div class="input-group">
+        <div class="label-row">
+          <label for="contractInput">Target Vendor Contract</label>
+          <span class="subtext">Agreement Clauses to Audit</span>
+        </div>
+        <textarea id="contractInput" placeholder="Paste external contract clauses to be audited..."></textarea>
+      </div>
+
+      <button id="runAuditBtn" class="btn btn-primary">
+        <span>Run Compliance Audit</span>
+      </button>
+    </section>
+
+    <!-- Right Pane: Audit Results -->
+    <section class="pane output-pane">
+      <div class="pane-header">
+        <h2>Clause-by-Clause Compliance Report</h2>
+        <div id="summaryStats" class="summary-stats"></div>
+      </div>
+
+      <!-- Loading State -->
+      <div id="loader" class="loader hidden">
+        <div class="spinner"></div>
+        <p>Grounding clauses against internal policies...</p>
+      </div>
+
+      <!-- Empty State -->
+      <div id="emptyState" class="empty-state">
+        <p>No contract audited yet. Click <strong>Load Sample Data</strong> and <strong>Run Compliance Audit</strong> to begin.</p>
+      </div>
+
+      <!-- Dynamic Cards -->
+      <div id="resultsContainer" class="cards-list"></div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
