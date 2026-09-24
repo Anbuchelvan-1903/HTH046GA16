@@ -1,10 +1,10 @@
-// Cumulative state lists for files
 let selectedRuleFiles = [];
 let selectedVendorFile = null;
 let currentAuditData = null;
-let isCurrentDashboardDownloaded = false; // Tracks if current dashboard was already downloaded
+let isCurrentDashboardDownloaded = false;
+let currentUser = null; // Stored user state: { username, savedRules }
+let authMode = 'login'; // 'login' or 'signup'
 
-// Demo Datasets (Simple Plain English)
 const DEMO_RULES = `[RULEBOOK 1: FINANCE RULES]
 Rule 1.1: All external vendor payment terms must strictly not exceed Net-30 days from invoice date. Net-60 or Net-90 terms are strictly forbidden.
 
@@ -20,6 +20,22 @@ const DEMO_VENDOR = `1. PAYMENT WINDOW: The Client agrees to remit payment withi
 4. CONTRACT TERMINATION: Either party may terminate this agreement at any time with thirty (30) days prior written notice.`;
 
 // DOM Selectors
+const authSection = document.getElementById('authSection');
+const userProfileSection = document.getElementById('userProfileSection');
+const userDisplayName = document.getElementById('userDisplayName');
+const loginBtn = document.getElementById('loginBtn');
+const signupBtn = document.getElementById('signupBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+
+const authModal = document.getElementById('authModal');
+const closeModalBtn = document.getElementById('closeModalBtn');
+const modalTitle = document.getElementById('modalTitle');
+const authUsernameInput = document.getElementById('authUsername');
+const authPasswordInput = document.getElementById('authPassword');
+const modalSubmitBtn = document.getElementById('modalSubmitBtn');
+const modalTogglePrompt = document.getElementById('modalTogglePrompt');
+const modalToggleLink = document.getElementById('modalToggleLink');
+
 const ruleFilesInput = document.getElementById('ruleFilesInput');
 const vendorFileInput = document.getElementById('vendorFileInput');
 const ruleFilesBtnLabel = document.getElementById('ruleFilesBtnLabel');
@@ -28,6 +44,8 @@ const ruleFilesList = document.getElementById('ruleFilesList');
 const vendorFileName = document.getElementById('vendorFileName');
 const rulesCountBadge = document.getElementById('rulesCountBadge');
 const vendorCountBadge = document.getElementById('vendorCountBadge');
+const persistentRulesBanner = document.getElementById('persistentRulesBanner');
+const saveRulesToAccountBtn = document.getElementById('saveRulesToAccountBtn');
 
 const runAuditBtn = document.getElementById('runAuditBtn');
 const loadSampleBtn = document.getElementById('loadSampleBtn');
@@ -66,7 +84,7 @@ const toast = document.getElementById('toast');
 const toastMsg = document.getElementById('toastMsg');
 const toastIcon = document.getElementById('toastIcon');
 
-// 1. Toast Notification Helper (with duration & icon)
+// 1. Toast Notification Helper
 function showToast(message, isWarning = false, duration = 2000) {
   toastMsg.textContent = message;
   toastIcon.textContent = isWarning ? "⚠️" : "✓";
@@ -82,7 +100,7 @@ function showToast(message, isWarning = false, duration = 2000) {
   }, duration);
 }
 
-// 2. Theme Toggle (Dark / Light)
+// 2. Theme Toggle
 themeToggleBtn.addEventListener('click', () => {
   const currentTheme = document.documentElement.getAttribute('data-theme');
   const targetTheme = currentTheme === 'light' ? 'dark' : 'light';
@@ -97,39 +115,180 @@ themeToggleBtn.addEventListener('click', () => {
   }
 });
 
-// 3. Cumulative Rule Files Upload Handling
+// 3. AUTH MODAL LOGIC
+loginBtn.addEventListener('click', () => openAuthModal('login'));
+signupBtn.addEventListener('click', () => openAuthModal('signup'));
+closeModalBtn.addEventListener('click', () => authModal.classList.add('hidden'));
+
+function openAuthModal(mode) {
+  authMode = mode;
+  authUsernameInput.value = '';
+  authPasswordInput.value = '';
+
+  if (mode === 'login') {
+    modalTitle.textContent = "Login to ComplianceGuard";
+    modalSubmitBtn.textContent = "Login";
+    modalTogglePrompt.textContent = "Don't have an account?";
+    modalToggleLink.textContent = "Sign Up";
+  } else {
+    modalTitle.textContent = "Create an Account";
+    modalSubmitBtn.textContent = "Sign Up";
+    modalTogglePrompt.textContent = "Already have an account?";
+    modalToggleLink.textContent = "Login";
+  }
+  authModal.classList.remove('hidden');
+}
+
+modalToggleLink.addEventListener('click', (e) => {
+  e.preventDefault();
+  openAuthModal(authMode === 'login' ? 'signup' : 'login');
+});
+
+modalSubmitBtn.addEventListener('click', async () => {
+  const username = authUsernameInput.value.trim();
+  const password = authPasswordInput.value.trim();
+
+  if (!username || !password) {
+    alert("Please enter username and password.");
+    return;
+  }
+
+  const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/signup';
+
+  try {
+    const res = await fetch(`http://localhost:8000${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || "Authentication failed");
+    }
+
+    // Set Logged In State
+    currentUser = { username: data.username, savedRules: data.savedRules || [] };
+    localStorage.setItem('cg_user', JSON.stringify(currentUser));
+    authModal.classList.add('hidden');
+    renderUserSession();
+    showToast(`Welcome, ${currentUser.username}!`, false, 2000);
+
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+logoutBtn.addEventListener('click', () => {
+  currentUser = null;
+  localStorage.removeItem('cg_user');
+  renderUserSession();
+  showToast("Logged out successfully.", false, 2000);
+});
+
+// Restore session on page load
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('cg_user');
+  if (saved) {
+    try {
+      currentUser = JSON.parse(saved);
+      renderUserSession();
+    } catch {}
+  }
+});
+
+function renderUserSession() {
+  if (currentUser) {
+    authSection.classList.add('hidden');
+    userProfileSection.classList.remove('hidden');
+    userDisplayName.textContent = `👤 ${currentUser.username}`;
+
+    // If user has saved rules, auto-load them
+    if (currentUser.savedRules && currentUser.savedRules.length > 0) {
+      persistentRulesBanner.classList.remove('hidden');
+      rulesCountBadge.textContent = `${currentUser.savedRules.length} saved files`;
+      ruleFilesBtnLabel.textContent = "+ Update / add more";
+      saveRulesToAccountBtn.classList.add('hidden');
+
+      ruleFilesList.innerHTML = currentUser.savedRules.map((r, idx) => `
+        <li class="file-tag-item" style="border-color: var(--green); color: var(--green);">
+          <span>🛡️ Saved Rule ${idx + 1}: ${r.name} (Auto-Loaded)</span>
+        </li>
+      `).join('');
+    } else {
+      persistentRulesBanner.classList.add('hidden');
+      saveRulesToAccountBtn.classList.remove('hidden');
+      updateRuleFilesUI();
+    }
+  } else {
+    authSection.classList.remove('hidden');
+    userProfileSection.classList.add('hidden');
+    persistentRulesBanner.classList.add('hidden');
+    saveRulesToAccountBtn.classList.add('hidden');
+    updateRuleFilesUI();
+  }
+}
+
+// 4. Save Uploaded Rules to Account
+saveRulesToAccountBtn.addEventListener('click', async () => {
+  if (!currentUser) {
+    alert("Please login first to save rules to your account!");
+    return;
+  }
+  if (selectedRuleFiles.length === 0) {
+    alert("Please upload at least 1 rule file first.");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('username', currentUser.username);
+  selectedRuleFiles.forEach(f => formData.append('ruleFiles', f));
+
+  try {
+    const res = await fetch('http://localhost:8000/api/user/save-rules', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    currentUser.savedRules = data.savedRules;
+    localStorage.setItem('cg_user', JSON.stringify(currentUser));
+    renderUserSession();
+    showToast("Rules permanently saved to your account!", false, 2500);
+  } catch (err) {
+    alert("Failed to save rules: " + err.message);
+  }
+});
+
+// 5. CUMULATIVE RULE FILES UPLOAD
 ruleFilesInput.addEventListener('change', (e) => {
   const newlySelected = Array.from(e.target.files);
   newlySelected.forEach(newFile => {
-    // Avoid exact duplicate filenames
     if (!selectedRuleFiles.some(f => f.name === newFile.name && f.size === newFile.size)) {
       selectedRuleFiles.push(newFile);
     }
   });
 
-  // Reset input value so re-selecting same file triggers change event
   ruleFilesInput.value = '';
+  if (currentUser) {
+    saveRulesToAccountBtn.classList.remove('hidden');
+  }
   updateRuleFilesUI();
 });
 
 function updateRuleFilesUI() {
   const count = selectedRuleFiles.length;
-  rulesCountBadge.textContent = `${count} files`;
-
-  // Dynamic button label: "+ Add file here" vs "+ Add more files"
-  if (count > 0) {
-    ruleFilesBtnLabel.textContent = "+ Add more files";
-  } else {
-    ruleFilesBtnLabel.textContent = "+ Add file here";
+  if (!currentUser || !currentUser.savedRules || currentUser.savedRules.length === 0) {
+    rulesCountBadge.textContent = `${count} files`;
+    ruleFilesBtnLabel.textContent = count > 0 ? "+ Add more files" : "+ Add file here";
+    ruleFilesList.innerHTML = selectedRuleFiles.map((file, idx) => `
+      <li class="file-tag-item">
+        <span>📄 Rule ${idx + 1}: ${file.name} (${Math.round(file.size / 1024)} KB)</span>
+        <button class="remove-file-btn" onclick="removeRuleFile(${idx})" title="Remove file">✕</button>
+      </li>
+    `).join('');
   }
-
-  // Render list with individual remove button
-  ruleFilesList.innerHTML = selectedRuleFiles.map((file, idx) => `
-    <li class="file-tag-item">
-      <span>📄 Rule ${idx + 1}: ${file.name} (${Math.round(file.size / 1024)} KB)</span>
-      <button class="remove-file-btn" onclick="removeRuleFile(${idx})" title="Remove file">✕</button>
-    </li>
-  `).join('');
 }
 
 window.removeRuleFile = function(index) {
@@ -137,7 +296,7 @@ window.removeRuleFile = function(index) {
   updateRuleFilesUI();
 };
 
-// 4. Vendor Permission File Upload Handling
+// 6. VENDOR FILE UPLOAD
 vendorFileInput.addEventListener('change', (e) => {
   if (e.target.files.length > 0) {
     selectedVendorFile = e.target.files[0];
@@ -149,7 +308,7 @@ vendorFileInput.addEventListener('change', (e) => {
   vendorFileInput.value = '';
 });
 
-// 5. 1-Click Demo Datasets
+// 7. DEMO DATASETS
 loadSampleBtn.addEventListener('click', () => {
   const ruleBlob = new Blob([DEMO_RULES], { type: 'text/plain' });
   const vendorBlob = new Blob([DEMO_VENDOR], { type: 'text/plain' });
@@ -166,16 +325,23 @@ loadSampleBtn.addEventListener('click', () => {
   vendorFileName.textContent = `📑 ${selectedVendorFile.name}`;
   vendorFileName.style.color = "var(--brand-blue)";
   vendorFileBtnLabel.textContent = "+ Replace vendor file";
+  if (currentUser) {
+    saveRulesToAccountBtn.classList.remove('hidden');
+  }
 });
 
-// 6. Run Compliance Audit
+// 8. RUN AUDIT ACTION
 runAuditBtn.addEventListener('click', async () => {
-  if (selectedRuleFiles.length === 0 || !selectedVendorFile) {
-    alert("Please upload at least 1 Rule File and 1 Vendor Permission File, or click '⚡ Load Demo Datasets'!");
+  const hasSavedRules = currentUser && currentUser.savedRules && currentUser.savedRules.length > 0;
+  if (!hasSavedRules && selectedRuleFiles.length === 0) {
+    alert("Please upload at least 1 Rule File (or login with saved rules), and choose 1 Vendor Permission File!");
+    return;
+  }
+  if (!selectedVendorFile) {
+    alert("Please upload 1 Vendor Permission File to audit!");
     return;
   }
 
-  // Clear previous & show loading screen
   emptyState.classList.add('hidden');
   dashboardSection.classList.add('hidden');
   resultsContainer.innerHTML = '';
@@ -183,6 +349,9 @@ runAuditBtn.addEventListener('click', async () => {
   runAuditBtn.disabled = true;
 
   const formData = new FormData();
+  if (currentUser) {
+    formData.append('username', currentUser.username);
+  }
   selectedRuleFiles.forEach(file => {
     formData.append('ruleFiles', file);
   });
@@ -199,12 +368,9 @@ runAuditBtn.addEventListener('click', async () => {
     }
 
     currentAuditData = await response.json();
-    isCurrentDashboardDownloaded = false; // Reset download flag for this new audit
+    isCurrentDashboardDownloaded = false;
     renderDashboardAndCards(currentAuditData);
 
-    // Reveal Action Buttons
-    downloadPdfBtn.classList.remove('hidden');
-    copyEmailBtn.classList.remove('hidden');
   } catch (error) {
     console.error("Audit error:", error);
     alert("Connection Error: Backend server is not responding at http://localhost:8000. Run 'node server.js' first.");
@@ -215,7 +381,7 @@ runAuditBtn.addEventListener('click', async () => {
   }
 });
 
-// 7. Render Dashboard & Traffic Light Cards
+// 9. RENDER DASHBOARD & CARDS
 function renderDashboardAndCards(data) {
   dashboardSection.classList.remove('hidden');
 
@@ -237,7 +403,6 @@ function renderDashboardAndCards(data) {
   yellowCount.textContent = `${stats.yellow_count ?? 0} unlisted`;
   redCount.textContent = `${stats.red_count ?? 0} violations`;
 
-  // Animate progress bar widths
   barGreen.style.width = `${gPct}%`;
   barYellow.style.width = `${yPct}%`;
   barRed.style.width = `${rPct}%`;
@@ -253,7 +418,6 @@ function renderDashboardAndCards(data) {
   renderFilteredCards('ALL');
 }
 
-// 8. Filter Cards by Signal (All / Red / Yellow / Green)
 function renderFilteredCards(filter) {
   if (!currentAuditData) return;
   const findings = currentAuditData.findings || [];
@@ -315,7 +479,6 @@ function renderFilteredCards(filter) {
   }).join('');
 }
 
-// Filter Tab Click Handlers
 filterTabs.forEach(tab => {
   tab.addEventListener('click', () => {
     filterTabs.forEach(t => t.classList.remove('active'));
@@ -324,7 +487,6 @@ filterTabs.forEach(tab => {
   });
 });
 
-// 9. 1-Click Clipboard Copy for Clauses
 window.copyClause = function(encodedText) {
   const text = decodeURIComponent(encodedText);
   navigator.clipboard.writeText(text).then(() => {
@@ -332,9 +494,12 @@ window.copyClause = function(encodedText) {
   });
 };
 
-// 10. 1-Click Vendor Negotiation Email Generator
+// 10. COPY VENDOR EMAIL
 copyEmailBtn.addEventListener('click', () => {
-  if (!currentAuditData) return;
+  if (!currentAuditData) {
+    alert("Please run an audit first to generate vendor counter-notice email.");
+    return;
+  }
   const findings = currentAuditData.findings || [];
   const redItems = findings.filter(f => f.signal === 'RED');
   const yellowItems = findings.filter(f => f.signal === 'YELLOW');
@@ -367,9 +532,13 @@ copyEmailBtn.addEventListener('click', () => {
   });
 });
 
-// 11. Direct PDF Download with Duplicate Check Pop-Up
+// 11. DIRECT PDF DOWNLOAD WITH DUPLICATE CHECK POP-UP
 downloadPdfBtn.addEventListener('click', () => {
-  // If already downloaded for this current audit, show 2-second pop-up warning
+  if (!currentAuditData) {
+    alert("Please run an audit first before downloading PDF report.");
+    return;
+  }
+
   if (isCurrentDashboardDownloaded) {
     showToast("Already downloaded!", true, 2000);
     return;
@@ -387,6 +556,6 @@ downloadPdfBtn.addEventListener('click', () => {
   };
 
   html2pdf().set(opt).from(element).save().then(() => {
-    isCurrentDashboardDownloaded = true; // Mark as downloaded
+    isCurrentDashboardDownloaded = true;
   });
 });

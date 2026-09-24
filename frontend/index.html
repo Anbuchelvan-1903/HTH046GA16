@@ -9,10 +9,35 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
-  <!-- Toast Alert for Redline copy, Email copy & Duplicate Download -->
+  <!-- Toast Notification -->
   <div id="toast" class="toast hidden">
     <span id="toastIcon" class="toast-icon">✓</span>
     <span id="toastMsg">Action completed!</span>
+  </div>
+
+  <!-- Auth Modal (Login / Sign Up) -->
+  <div id="authModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modalTitle">Login to ComplianceGuard</h3>
+        <button id="closeModalBtn" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="input-field">
+          <label>Username</label>
+          <input type="text" id="authUsername" placeholder="e.g. anbu_admin" autocomplete="off" />
+        </div>
+        <div class="input-field">
+          <label>Password</label>
+          <input type="password" id="authPassword" placeholder="••••••••" />
+        </div>
+        <button id="modalSubmitBtn" class="btn btn-primary" style="margin-top: 1rem;">Login</button>
+        <p class="modal-toggle-text">
+          <span id="modalTogglePrompt">Don't have an account?</span> 
+          <a href="#" id="modalToggleLink">Sign Up</a>
+        </p>
+      </div>
+    </div>
   </div>
 
   <header class="app-header">
@@ -31,17 +56,16 @@
         <span id="themeLabel">Light Mode</span>
       </button>
 
-      <!-- 1-Click Copy Vendor Counter Email -->
-      <button id="copyEmailBtn" class="btn btn-email hidden">
-        📩 Copy Vendor Email
-      </button>
+      <!-- Auth Action Section (Replaces Engine Active) -->
+      <div id="authSection" class="auth-group">
+        <button id="loginBtn" class="btn btn-auth-outline">Login</button>
+        <button id="signupBtn" class="btn btn-auth-solid">Sign Up</button>
+      </div>
 
-      <!-- Direct PDF Download Button -->
-      <button id="downloadPdfBtn" class="btn btn-export hidden">
-        ⬇️ Download Executive Audit PDF
-      </button>
-
-      <span class="status-indicator">● Engine Active</span>
+      <div id="userProfileSection" class="user-profile-group hidden">
+        <span class="user-avatar-tag" id="userDisplayName">👤 User</span>
+        <button id="logoutBtn" class="btn btn-logout" title="Logout">Logout</button>
+      </div>
     </div>
   </header>
 
@@ -60,9 +84,17 @@
           <span class="badge-count" id="rulesCountBadge">0 files</span>
         </div>
         <p class="upload-hint">Upload HR Policy, IT Security, Privacy Guidelines (.pdf, .txt)</p>
+        
+        <!-- Persistent badge for existing user -->
+        <div id="persistentRulesBanner" class="persistent-rules-banner hidden">
+          <span>🛡️ <strong>Existing User:</strong> Saved company rulebooks are auto-loaded from your account. You don't need to re-upload them unless updating.</span>
+        </div>
+
         <input type="file" id="ruleFilesInput" accept=".pdf,.txt" multiple class="file-input" />
-        <!-- Dynamic Label: Changes from "+ Add file here" to "+ Add more files" -->
-        <label for="ruleFilesInput" id="ruleFilesBtnLabel" class="file-browse-btn">+ Add file here</label>
+        <div class="rule-upload-actions">
+          <label for="ruleFilesInput" id="ruleFilesBtnLabel" class="file-browse-btn">+ Add file here</label>
+          <button id="saveRulesToAccountBtn" class="btn btn-save-rules hidden" title="Save uploaded rules to your account permanently">💾 Save to My Account</button>
+        </div>
         <ul id="ruleFilesList" class="file-tags-list"></ul>
       </div>
 
@@ -78,9 +110,20 @@
         <div id="vendorFileName" class="selected-vendor-file">No file chosen yet</div>
       </div>
 
+      <!-- Run Audit Button -->
       <button id="runAuditBtn" class="btn btn-primary">
         <span>🔍 Run Cross-Document Compliance Audit</span>
       </button>
+
+      <!-- Action Row Placed Exactly Below Run Audit Button -->
+      <div class="action-btn-row">
+        <button id="copyEmailBtn" class="btn btn-email">
+          📩 Copy Vendor Email
+        </button>
+        <button id="downloadPdfBtn" class="btn btn-export">
+          ⬇️ Download Executive Audit PDF
+        </button>
+      </div>
     </section>
 
     <!-- Right Pane: Dashboard & Findings -->

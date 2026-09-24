@@ -3,7 +3,13 @@ import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
 import pdfParse from 'pdf-parse-new';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -12,6 +18,24 @@ app.use(cors());
 app.use(express.json({ limit: '35mb' }));
 
 const upload = multer({ storage: multer.memoryStorage() });
+
+// Lightweight JSON database for users and saved company rules
+const DB_FILE = path.join(__dirname, 'database.json');
+if (!fs.existsSync(DB_FILE)) {
+  fs.writeFileSync(DB_FILE, JSON.stringify({ users: [] }, null, 2));
+}
+
+function readDB() {
+  try {
+    return JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
+  } catch {
+    return { users: [] };
+  }
+}
+
+function writeDB(data) {
+  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
+}
 
 async function extractText(file) {
   if (!file) return "";
@@ -28,7 +52,7 @@ async function extractText(file) {
   }
 }
 
-// Resilient Fallback Data (Ultra-clear plain English)
+// Built-in Fallback Data
 const fallbackResponse = {
   overall_score: 65,
   stats: {
@@ -96,7 +120,7 @@ const fallbackResponse = {
 async function executeMultiDocAudit(rulesCombinedText, vendorText) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey || apiKey.startsWith("AQ.") || apiKey.includes("your_gemini")) {
-    console.warn("[Backend Engine] Valid API key absent. Serving structured fallback audit.");
+    console.warn("[Backend Engine] Valid API key absent. Serving fallback audit.");
     return fallbackResponse;
   }
 
@@ -113,7 +137,7 @@ ${rulesCombinedText}
 === TARGET VENDOR REQUESTS / CONTRACT ===
 ${vendorText}
 
-Explain every finding in EXTREMELY SIMPLE, PLAIN ENGLISH without complex jargon.
+Explain every finding in EXTREMELY SIMPLE, PLAIN ENGLISH.
 
 Classify every item into 3 signals:
 1. RED: Dangerous Violation. Breaks a rule. Provide a ready-to-paste replacement clause.
@@ -169,23 +193,108 @@ Return strictly valid JSON only:
   }
 }
 
+// ----------------- AUTHENTICATION & USER RULES API -----------------
+
+// Sign Up
+app.post('/api/auth/signup', (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ error: "Username and password required" });
+  }
+
+  const db = readDB();
+  if (db.users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
+    return res.status(400).json({ error: "Username already exists. Please login." });
+  }
+
+  const newUser = {
+    username,
+    password,
+    savedRules: [] // Array of { name, content }
+  };
+  db.users.push(newUser);
+  writeDB(db);
+
+  return res.json({ success: true, username: newUser.username, savedRules: [] });
+});
+
+// Login
+app.post('/api/auth/login', (req, res) => {
+  const { username, password } = req.body;
+  const db = readDB();
+  const user = db.users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.password === password);
+
+  if (!user) {
+    return res.status(401).json({ error: "Invalid username or password" });
+  }
+
+  return res.json({
+    success: true,
+    username: user.username,
+    savedRules: user.savedRules || []
+  });
+});
+
+// Save or Update User Rulebooks
+app.post('/api/user/save-rules', upload.array('ruleFiles', 15), async (req, res) => {
+  const { username } = req.body;
+  if (!username) return res.status(400).json({ error: "Username required" });
+
+  const db = readDB();
+  const user = db.users.find(u => u.username.toLowerCase() === username.toLowerCase());
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  const files = req.files || [];
+  const parsedRules = [];
+  for (const f of files) {
+    const text = await extractText(f);
+    parsedRules.push({ name: f.originalname, content: text });
+  }
+
+  user.savedRules = parsedRules;
+  writeDB(db);
+
+  return res.json({ success: true, count: user.savedRules.length, savedRules: user.savedRules });
+});
+
+// ----------------- AUDIT API WITH EXISTING USER KNOWLEDGE -----------------
+
 app.post('/api/audit-multi', upload.fields([
   { name: 'ruleFiles', maxCount: 20 },
   { name: 'vendorFile', maxCount: 1 }
 ]), async (req, res) => {
   try {
+    const username = req.body.username;
     const ruleFiles = req.files && req.files['ruleFiles'] ? req.files['ruleFiles'] : [];
     const vendorFiles = req.files && req.files['vendorFile'] ? req.files['vendorFile'] : [];
 
-    if (ruleFiles.length === 0 || vendorFiles.length === 0) {
-      return res.status(400).json({ error: "Please upload at least 1 Rule File and 1 Vendor Permission File." });
+    if (vendorFiles.length === 0) {
+      return res.status(400).json({ error: "Vendor permission file is required." });
     }
 
     let rulesTextArray = [];
+
+    // Check if user is logged in and has saved rules in DB
+    if (username) {
+      const db = readDB();
+      const user = db.users.find(u => u.username.toLowerCase() === username.toLowerCase());
+      if (user && user.savedRules && user.savedRules.length > 0) {
+        user.savedRules.forEach((r, idx) => {
+          rulesTextArray.push(`--- [PERSISTED RULEBOOK ${idx + 1}: ${r.name}] ---\n${r.content}`);
+        });
+      }
+    }
+
+    // Ingest any newly uploaded rule files
     for (let i = 0; i < ruleFiles.length; i++) {
       const txt = await extractText(ruleFiles[i]);
-      rulesTextArray.push(`--- [RULEBOOK ${i + 1}: ${ruleFiles[i].originalname}] ---\n${txt}`);
+      rulesTextArray.push(`--- [RULEBOOK ${rulesTextArray.length + 1}: ${ruleFiles[i].originalname}] ---\n${txt}`);
     }
+
+    if (rulesTextArray.length === 0) {
+      return res.status(400).json({ error: "No rules found. Please upload at least 1 rule file or login to use saved rules." });
+    }
+
     const combinedRulesText = rulesTextArray.join('\n\n');
     const vendorText = await extractText(vendorFiles[0]);
 
@@ -197,16 +306,8 @@ app.post('/api/audit-multi', upload.fields([
   }
 });
 
-app.post('/api/audit', async (req, res) => {
-  const policy = req.body.policy_text || req.body.policy || "";
-  const contract = req.body.contract_text || req.body.contract || "";
-  if (!policy || !contract) return res.json(fallbackResponse);
-  const result = await executeMultiDocAudit(policy, contract);
-  return res.json(result);
-});
-
 app.get('/api/health', (req, res) => {
-  res.json({ status: "online", engine: "ComplianceGuard v4.5 DirectPDF" });
+  res.json({ status: "online", engine: "ComplianceGuard v5.0 Auth & Persistence" });
 });
 
 const server = app.listen(PORT, '0.0.0.0', () => {
