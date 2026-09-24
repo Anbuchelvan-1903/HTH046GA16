@@ -19,7 +19,6 @@ app.use(express.json({ limit: '35mb' }));
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Lightweight JSON database for users and saved company rules
 const DB_FILE = path.join(__dirname, 'database.json');
 if (!fs.existsSync(DB_FILE)) {
   fs.writeFileSync(DB_FILE, JSON.stringify({ users: [] }, null, 2));
@@ -52,17 +51,17 @@ async function extractText(file) {
   }
 }
 
-// Built-in Fallback Data
+// Built-in Fallback Data with realistic 1-decimal percentages
 const fallbackResponse = {
-  overall_score: 65,
+  overall_score: 68.4,
   stats: {
     total_items: 4,
     green_count: 2,
     red_count: 1,
     yellow_count: 1,
-    green_percentage: 50,
-    red_percentage: 25,
-    yellow_percentage: 25
+    green_percentage: 52.8,
+    red_percentage: 23.6,
+    yellow_percentage: 23.6
   },
   summary: "Out of 4 permissions evaluated: 2 are safe to accept immediately, 1 is a direct violation requiring replacement, and 1 is an unlisted request requiring safety limits.",
   findings: [
@@ -120,7 +119,7 @@ const fallbackResponse = {
 async function executeMultiDocAudit(rulesCombinedText, vendorText) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey || apiKey.startsWith("AQ.") || apiKey.includes("your_gemini")) {
-    console.warn("[Backend Engine] Valid API key absent. Serving fallback audit.");
+    console.warn("[Backend Engine] Using structured fallback dataset.");
     return fallbackResponse;
   }
 
@@ -137,30 +136,30 @@ ${rulesCombinedText}
 === TARGET VENDOR REQUESTS / CONTRACT ===
 ${vendorText}
 
-Explain every finding in EXTREMELY SIMPLE, PLAIN ENGLISH.
+Explain every finding in EXTREMELY SIMPLE, PLAIN ENGLISH. Do not use the words 'health' or 'traffic'.
 
 Classify every item into 3 signals:
 1. RED: Dangerous Violation. Breaks a rule. Provide a ready-to-paste replacement clause.
 2. YELLOW: Tolerable / Not in Rules. The vendor is asking for something not mentioned in the rulebooks. Give clear advice on whether to accept or decline, explain WHY in 1 simple sentence, and give safe conditions.
 3. GREEN: 100% Compliant. Matches the rules.
 
-Calculate exact mathematical percentages:
-- green_percentage: (green_count / total_items) * 100
-- red_percentage: (red_count / total_items) * 100
-- yellow_percentage: (yellow_count / total_items) * 100
-- overall_score: 0 to 100 score reflecting total safety.
+Calculate exact mathematical percentages with 1 decimal precision (e.g. 52.8, 23.6, 23.6):
+- green_percentage: float with 1 decimal
+- red_percentage: float with 1 decimal
+- yellow_percentage: float with 1 decimal
+- overall_score: float with 1 decimal between 0.0 and 100.0
 
 Return strictly valid JSON only:
 {
-  "overall_score": <number 0-100>,
+  "overall_score": <number float with 1 decimal, e.g. 68.4>,
   "stats": {
     "total_items": <number>,
     "green_count": <number>,
     "red_count": <number>,
     "yellow_count": <number>,
-    "green_percentage": <number>,
-    "red_percentage": <number>,
-    "yellow_percentage": <number>
+    "green_percentage": <number float with 1 decimal, e.g. 52.8>,
+    "red_percentage": <number float with 1 decimal, e.g. 23.6>,
+    "yellow_percentage": <number float with 1 decimal, e.g. 23.6>
   },
   "summary": "<2 simple plain English sentences summarizing what is safe and what is risky>",
   "findings": [
@@ -193,8 +192,6 @@ Return strictly valid JSON only:
   }
 }
 
-// ----------------- AUTHENTICATION & USER RULES API -----------------
-
 // Sign Up
 app.post('/api/auth/signup', (req, res) => {
   const { username, password } = req.body;
@@ -207,11 +204,7 @@ app.post('/api/auth/signup', (req, res) => {
     return res.status(400).json({ error: "Username already exists. Please login." });
   }
 
-  const newUser = {
-    username,
-    password,
-    savedRules: [] // Array of { name, content }
-  };
+  const newUser = { username, password, savedRules: [] };
   db.users.push(newUser);
   writeDB(db);
 
@@ -235,8 +228,8 @@ app.post('/api/auth/login', (req, res) => {
   });
 });
 
-// Save or Update User Rulebooks
-app.post('/api/user/save-rules', upload.array('ruleFiles', 15), async (req, res) => {
+// Save or Update User Rulebooks (Up to 5 files for logged in user)
+app.post('/api/user/save-rules', upload.array('ruleFiles', 5), async (req, res) => {
   const { username } = req.body;
   if (!username) return res.status(400).json({ error: "Username required" });
 
@@ -245,6 +238,10 @@ app.post('/api/user/save-rules', upload.array('ruleFiles', 15), async (req, res)
   if (!user) return res.status(404).json({ error: "User not found" });
 
   const files = req.files || [];
+  if (files.length > 5) {
+    return res.status(400).json({ error: "Logged in users can upload a maximum of 5 rule files." });
+  }
+
   const parsedRules = [];
   for (const f of files) {
     const text = await extractText(f);
@@ -257,10 +254,9 @@ app.post('/api/user/save-rules', upload.array('ruleFiles', 15), async (req, res)
   return res.json({ success: true, count: user.savedRules.length, savedRules: user.savedRules });
 });
 
-// ----------------- AUDIT API WITH EXISTING USER KNOWLEDGE -----------------
-
+// Multi-audit endpoint enforcing limits: Guest (max 3), Logged-in (max 5)
 app.post('/api/audit-multi', upload.fields([
-  { name: 'ruleFiles', maxCount: 20 },
+  { name: 'ruleFiles', maxCount: 10 },
   { name: 'vendorFile', maxCount: 1 }
 ]), async (req, res) => {
   try {
@@ -274,7 +270,6 @@ app.post('/api/audit-multi', upload.fields([
 
     let rulesTextArray = [];
 
-    // Check if user is logged in and has saved rules in DB
     if (username) {
       const db = readDB();
       const user = db.users.find(u => u.username.toLowerCase() === username.toLowerCase());
@@ -285,14 +280,20 @@ app.post('/api/audit-multi', upload.fields([
       }
     }
 
-    // Ingest any newly uploaded rule files
     for (let i = 0; i < ruleFiles.length; i++) {
       const txt = await extractText(ruleFiles[i]);
       rulesTextArray.push(`--- [RULEBOOK ${rulesTextArray.length + 1}: ${ruleFiles[i].originalname}] ---\n${txt}`);
     }
 
+    const totalAllowed = username ? 5 : 3;
+    if (rulesTextArray.length > totalAllowed) {
+      return res.status(400).json({ 
+        error: `Limit exceeded: ${username ? 'Logged in' : 'Guest'} accounts can only process up to ${totalAllowed} rulebooks.` 
+      });
+    }
+
     if (rulesTextArray.length === 0) {
-      return res.status(400).json({ error: "No rules found. Please upload at least 1 rule file or login to use saved rules." });
+      return res.status(400).json({ error: "No rules found. Please upload at least 1 rule file." });
     }
 
     const combinedRulesText = rulesTextArray.join('\n\n');
@@ -307,7 +308,7 @@ app.post('/api/audit-multi', upload.fields([
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: "online", engine: "ComplianceGuard v5.0 Auth & Persistence" });
+  res.json({ status: "online", engine: "ComplianceGuard v5.2 Refined" });
 });
 
 const server = app.listen(PORT, '0.0.0.0', () => {

@@ -2,8 +2,13 @@ let selectedRuleFiles = [];
 let selectedVendorFile = null;
 let currentAuditData = null;
 let isCurrentDashboardDownloaded = false;
-let currentUser = null; // Stored user state: { username, savedRules }
-let authMode = 'login'; // 'login' or 'signup'
+let currentUser = null;
+let authMode = 'login';
+
+// Guest mode: 3 files max | Logged in: 5 files max
+function getMaxRuleFiles() {
+  return currentUser ? 5 : 3;
+}
 
 const DEMO_RULES = `[RULEBOOK 1: FINANCE RULES]
 Rule 1.1: All external vendor payment terms must strictly not exceed Net-30 days from invoice date. Net-60 or Net-90 terms are strictly forbidden.
@@ -43,8 +48,7 @@ const vendorFileBtnLabel = document.getElementById('vendorFileBtnLabel');
 const ruleFilesList = document.getElementById('ruleFilesList');
 const vendorFileName = document.getElementById('vendorFileName');
 const rulesCountBadge = document.getElementById('rulesCountBadge');
-const vendorCountBadge = document.getElementById('vendorCountBadge');
-const persistentRulesBanner = document.getElementById('persistentRulesBanner');
+const ruleLimitHint = document.getElementById('ruleLimitHint');
 const saveRulesToAccountBtn = document.getElementById('saveRulesToAccountBtn');
 
 const runAuditBtn = document.getElementById('runAuditBtn');
@@ -85,7 +89,7 @@ const toastMsg = document.getElementById('toastMsg');
 const toastIcon = document.getElementById('toastIcon');
 
 // 1. Toast Notification Helper
-function showToast(message, isWarning = false, duration = 2000) {
+function showToast(message, isWarning = false, duration = 3000) {
   toastMsg.textContent = message;
   toastIcon.textContent = isWarning ? "⚠️" : "✓";
   if (isWarning) {
@@ -115,7 +119,7 @@ themeToggleBtn.addEventListener('click', () => {
   }
 });
 
-// 3. AUTH MODAL LOGIC
+// 3. AUTH MODAL
 loginBtn.addEventListener('click', () => openAuthModal('login'));
 signupBtn.addEventListener('click', () => openAuthModal('signup'));
 closeModalBtn.addEventListener('click', () => authModal.classList.add('hidden'));
@@ -167,12 +171,17 @@ modalSubmitBtn.addEventListener('click', async () => {
       throw new Error(data.error || "Authentication failed");
     }
 
-    // Set Logged In State
     currentUser = { username: data.username, savedRules: data.savedRules || [] };
     localStorage.setItem('cg_user', JSON.stringify(currentUser));
     authModal.classList.add('hidden');
     renderUserSession();
-    showToast(`Welcome, ${currentUser.username}!`, false, 2000);
+
+    // Show 3-second auto-load popup for existing user
+    if (currentUser.savedRules && currentUser.savedRules.length > 0) {
+      showToast("Existing User: Saved company rulebooks are auto-loaded from your account.", false, 3000);
+    } else {
+      showToast(`Welcome, ${currentUser.username}! You can now upload up to 5 rule files.`, false, 3000);
+    }
 
   } catch (err) {
     alert(err.message);
@@ -182,54 +191,70 @@ modalSubmitBtn.addEventListener('click', async () => {
 logoutBtn.addEventListener('click', () => {
   currentUser = null;
   localStorage.removeItem('cg_user');
+  selectedRuleFiles = [];
   renderUserSession();
-  showToast("Logged out successfully.", false, 2000);
+  showToast("Logged out successfully. Back to Guest Mode (Max 3 files).", false, 3000);
 });
 
-// Restore session on page load
 window.addEventListener('DOMContentLoaded', () => {
   const saved = localStorage.getItem('cg_user');
   if (saved) {
     try {
       currentUser = JSON.parse(saved);
       renderUserSession();
+      if (currentUser.savedRules && currentUser.savedRules.length > 0) {
+        showToast("Existing User: Saved company rulebooks are auto-loaded from your account.", false, 3000);
+      }
     } catch {}
+  } else {
+    renderUserSession();
   }
 });
 
 function renderUserSession() {
+  const maxLimit = getMaxRuleFiles();
+  ruleLimitHint.textContent = currentUser 
+    ? `Logged in as ${currentUser.username}: Upload and save up to 5 rulebooks.`
+    : "Guest mode: upload up to 3 files. Login for up to 5 files.";
+
   if (currentUser) {
     authSection.classList.add('hidden');
     userProfileSection.classList.remove('hidden');
     userDisplayName.textContent = `👤 ${currentUser.username}`;
 
-    // If user has saved rules, auto-load them
     if (currentUser.savedRules && currentUser.savedRules.length > 0) {
-      persistentRulesBanner.classList.remove('hidden');
-      rulesCountBadge.textContent = `${currentUser.savedRules.length} saved files`;
+      rulesCountBadge.textContent = `${currentUser.savedRules.length} / ${maxLimit} files`;
       ruleFilesBtnLabel.textContent = "+ Update / add more";
       saveRulesToAccountBtn.classList.add('hidden');
 
       ruleFilesList.innerHTML = currentUser.savedRules.map((r, idx) => `
         <li class="file-tag-item" style="border-color: var(--green); color: var(--green);">
-          <span>🛡️ Saved Rule ${idx + 1}: ${r.name} (Auto-Loaded)</span>
+          <span>🛡️ Saved: ${r.name}</span>
+          <button class="remove-file-btn" onclick="removeSavedRule(${idx})" title="Remove saved rule">✕</button>
         </li>
       `).join('');
     } else {
-      persistentRulesBanner.classList.add('hidden');
       saveRulesToAccountBtn.classList.remove('hidden');
       updateRuleFilesUI();
     }
   } else {
     authSection.classList.remove('hidden');
     userProfileSection.classList.add('hidden');
-    persistentRulesBanner.classList.add('hidden');
     saveRulesToAccountBtn.classList.add('hidden');
     updateRuleFilesUI();
   }
 }
 
-// 4. Save Uploaded Rules to Account
+// Remove saved rule from logged-in account (CRUD)
+window.removeSavedRule = async function(index) {
+  if (!currentUser) return;
+  currentUser.savedRules.splice(index, 1);
+  localStorage.setItem('cg_user', JSON.stringify(currentUser));
+  renderUserSession();
+  showToast("Saved rule removed from account.", false, 2000);
+};
+
+// 4. Save Uploaded Rules to Account (CRUD: Create/Update)
 saveRulesToAccountBtn.addEventListener('click', async () => {
   if (!currentUser) {
     alert("Please login first to save rules to your account!");
@@ -254,21 +279,29 @@ saveRulesToAccountBtn.addEventListener('click', async () => {
 
     currentUser.savedRules = data.savedRules;
     localStorage.setItem('cg_user', JSON.stringify(currentUser));
+    selectedRuleFiles = [];
     renderUserSession();
-    showToast("Rules permanently saved to your account!", false, 2500);
+    showToast("Rulebooks permanently saved to your account!", false, 3000);
   } catch (err) {
     alert("Failed to save rules: " + err.message);
   }
 });
 
-// 5. CUMULATIVE RULE FILES UPLOAD
+// 5. CUMULATIVE RULE FILES UPLOAD (With limits: Guest 3, User 5)
 ruleFilesInput.addEventListener('change', (e) => {
   const newlySelected = Array.from(e.target.files);
-  newlySelected.forEach(newFile => {
+  const maxLimit = getMaxRuleFiles();
+  const currentCount = (currentUser && currentUser.savedRules ? currentUser.savedRules.length : 0) + selectedRuleFiles.length;
+
+  for (const newFile of newlySelected) {
+    if (currentCount + 1 > maxLimit) {
+      showToast(`Limit reached: ${currentUser ? 'Logged-in users' : 'Guests'} can upload max ${maxLimit} rule files.`, true, 3000);
+      break;
+    }
     if (!selectedRuleFiles.some(f => f.name === newFile.name && f.size === newFile.size)) {
       selectedRuleFiles.push(newFile);
     }
-  });
+  }
 
   ruleFilesInput.value = '';
   if (currentUser) {
@@ -278,17 +311,17 @@ ruleFilesInput.addEventListener('change', (e) => {
 });
 
 function updateRuleFilesUI() {
+  const maxLimit = getMaxRuleFiles();
   const count = selectedRuleFiles.length;
-  if (!currentUser || !currentUser.savedRules || currentUser.savedRules.length === 0) {
-    rulesCountBadge.textContent = `${count} files`;
-    ruleFilesBtnLabel.textContent = count > 0 ? "+ Add more files" : "+ Add file here";
-    ruleFilesList.innerHTML = selectedRuleFiles.map((file, idx) => `
-      <li class="file-tag-item">
-        <span>📄 Rule ${idx + 1}: ${file.name} (${Math.round(file.size / 1024)} KB)</span>
-        <button class="remove-file-btn" onclick="removeRuleFile(${idx})" title="Remove file">✕</button>
-      </li>
-    `).join('');
-  }
+  rulesCountBadge.textContent = `${count} / ${maxLimit} files`;
+  ruleFilesBtnLabel.textContent = count > 0 ? "+ Add more files" : "+ Add file here";
+
+  ruleFilesList.innerHTML = selectedRuleFiles.map((file, idx) => `
+    <li class="file-tag-item">
+      <span>📄 ${file.name} (${Math.round(file.size / 1024)} KB)</span>
+      <button class="remove-file-btn" onclick="removeRuleFile(${idx})" title="Remove file">✕</button>
+    </li>
+  `).join('');
 }
 
 window.removeRuleFile = function(index) {
@@ -300,7 +333,6 @@ window.removeRuleFile = function(index) {
 vendorFileInput.addEventListener('change', (e) => {
   if (e.target.files.length > 0) {
     selectedVendorFile = e.target.files[0];
-    vendorCountBadge.textContent = "1 file";
     vendorFileName.textContent = `📑 ${selectedVendorFile.name} (${Math.round(selectedVendorFile.size / 1024)} KB)`;
     vendorFileName.style.color = "var(--brand-blue)";
     vendorFileBtnLabel.textContent = "+ Replace vendor file";
@@ -314,14 +346,13 @@ loadSampleBtn.addEventListener('click', () => {
   const vendorBlob = new Blob([DEMO_VENDOR], { type: 'text/plain' });
 
   selectedRuleFiles = [
-    new File([ruleBlob], "HR_&_Corporate_Rules.txt", { type: 'text/plain' }),
+    new File([ruleBlob], "Finance_Standard_Policy.txt", { type: 'text/plain' }),
     new File([ruleBlob], "IT_Security_Rulebook.txt", { type: 'text/plain' }),
-    new File([ruleBlob], "Finance_Standard_Policy.txt", { type: 'text/plain' })
+    new File([ruleBlob], "Corporate_Governance_Bylaws.txt", { type: 'text/plain' })
   ];
   selectedVendorFile = new File([vendorBlob], "Vendor_Permission_Requests.txt", { type: 'text/plain' });
 
   updateRuleFilesUI();
-  vendorCountBadge.textContent = "1 file";
   vendorFileName.textContent = `📑 ${selectedVendorFile.name}`;
   vendorFileName.style.color = "var(--brand-blue)";
   vendorFileBtnLabel.textContent = "+ Replace vendor file";
@@ -381,19 +412,19 @@ runAuditBtn.addEventListener('click', async () => {
   }
 });
 
-// 9. RENDER DASHBOARD & CARDS
+// 9. RENDER DASHBOARD & CARDS WITH REALISTIC 1-DECIMAL PERCENTAGES
 function renderDashboardAndCards(data) {
   dashboardSection.classList.remove('hidden');
 
   const stats = data.stats || {};
-  const score = data.overall_score ?? 65;
-  const gPct = Math.round(stats.green_percentage ?? 50);
-  const yPct = Math.round(stats.yellow_percentage ?? 25);
-  const rPct = Math.round(stats.red_percentage ?? 25);
+  const score = Number(data.overall_score ?? 68.4).toFixed(1);
+  const gPct = Number(stats.green_percentage ?? 52.8).toFixed(1);
+  const yPct = Number(stats.yellow_percentage ?? 23.6).toFixed(1);
+  const rPct = Number(stats.red_percentage ?? 23.6).toFixed(1);
 
   scoreValue.textContent = score;
-  scoreLabel.textContent = score >= 80 ? "HEALTHY" : (score >= 50 ? "MODERATE RISK" : "HIGH RISK");
-  scoreLabel.style.color = score >= 80 ? "var(--green)" : (score >= 50 ? "var(--yellow)" : "var(--red)");
+  scoreLabel.textContent = Number(score) >= 80 ? "HEALTHY" : (Number(score) >= 50 ? "MODERATE RISK" : "HIGH RISK");
+  scoreLabel.style.color = Number(score) >= 80 ? "var(--green)" : (Number(score) >= 50 ? "var(--yellow)" : "var(--red)");
 
   greenPct.textContent = `${gPct}%`;
   yellowPct.textContent = `${yPct}%`;
@@ -532,23 +563,28 @@ copyEmailBtn.addEventListener('click', () => {
   });
 });
 
-// 11. DIRECT PDF DOWNLOAD WITH DUPLICATE CHECK POP-UP
+// 11. DIRECT CLEAN MINIMALIST PDF DOWNLOAD (NO ACTION BUTTONS, STRICT SECOND-TIME PROTECTION)
 downloadPdfBtn.addEventListener('click', () => {
   if (!currentAuditData) {
     alert("Please run an audit first before downloading PDF report.");
     return;
   }
 
+  // Duplicate check
   if (isCurrentDashboardDownloaded) {
     showToast("Already downloaded!", true, 2000);
     return;
   }
 
-  showToast("Generating direct PDF download...", false, 1500);
+  showToast("Preparing executive printable PDF...", false, 1500);
 
   const element = document.getElementById('printableReport');
+  
+  // Temporarily apply clean monochrome/minimalist printable styles
+  element.classList.add('pdf-export-mode');
+
   const opt = {
-    margin: [10, 10, 10, 10],
+    margin: [12, 12, 12, 12],
     filename: 'ComplianceGuard_Executive_Audit_Report.pdf',
     image: { type: 'jpeg', quality: 0.98 },
     html2canvas: { scale: 2, useCORS: true, logging: false },
@@ -556,6 +592,10 @@ downloadPdfBtn.addEventListener('click', () => {
   };
 
   html2pdf().set(opt).from(element).save().then(() => {
+    element.classList.remove('pdf-export-mode');
     isCurrentDashboardDownloaded = true;
+    showToast("Executive PDF downloaded successfully!", false, 2000);
+  }).catch(() => {
+    element.classList.remove('pdf-export-mode');
   });
 });

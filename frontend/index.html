@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ComplianceGuard AI - Enterprise Permission & Policy Auditor</title>
   <link rel="stylesheet" href="style.css" />
-  <!-- html2pdf bundle for direct client-side PDF download -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
@@ -15,7 +14,7 @@
     <span id="toastMsg">Action completed!</span>
   </div>
 
-  <!-- Auth Modal (Login / Sign Up) -->
+  <!-- Auth Modal -->
   <div id="authModal" class="modal-backdrop hidden">
     <div class="modal-card">
       <div class="modal-header">
@@ -56,7 +55,7 @@
         <span id="themeLabel">Light Mode</span>
       </button>
 
-      <!-- Auth Action Section (Replaces Engine Active) -->
+      <!-- Auth Section -->
       <div id="authSection" class="auth-group">
         <button id="loginBtn" class="btn btn-auth-outline">Login</button>
         <button id="signupBtn" class="btn btn-auth-solid">Sign Up</button>
@@ -77,34 +76,28 @@
         <button id="loadSampleBtn" class="btn btn-secondary">⚡ Load Demo Datasets</button>
       </div>
 
-      <!-- Upload Zone 1: Multiple Company Rules with Cumulative Adding -->
+      <!-- Upload Zone 1: Rules Files (Guest: 3 max, Login: 5 max) -->
       <div class="upload-box" id="ruleDropZone">
         <div class="upload-label-row">
-          <label>📁 Company Rulebooks (Add 3+ Files)</label>
-          <span class="badge-count" id="rulesCountBadge">0 files</span>
+          <label>📁 Company Rulebooks</label>
+          <span class="badge-count" id="rulesCountBadge">0 / 3 files</span>
         </div>
-        <p class="upload-hint">Upload HR Policy, IT Security, Privacy Guidelines (.pdf, .txt)</p>
+        <p class="upload-hint" id="ruleLimitHint">Guest mode: upload up to 3 files. Login for up to 5 files.</p>
         
-        <!-- Persistent badge for existing user -->
-        <div id="persistentRulesBanner" class="persistent-rules-banner hidden">
-          <span>🛡️ <strong>Existing User:</strong> Saved company rulebooks are auto-loaded from your account. You don't need to re-upload them unless updating.</span>
-        </div>
-
         <input type="file" id="ruleFilesInput" accept=".pdf,.txt" multiple class="file-input" />
         <div class="rule-upload-actions">
           <label for="ruleFilesInput" id="ruleFilesBtnLabel" class="file-browse-btn">+ Add file here</label>
-          <button id="saveRulesToAccountBtn" class="btn btn-save-rules hidden" title="Save uploaded rules to your account permanently">💾 Save to My Account</button>
+          <button id="saveRulesToAccountBtn" class="btn btn-save-rules hidden" title="Save rules permanently to your account">💾 Save to My Account</button>
         </div>
         <ul id="ruleFilesList" class="file-tags-list"></ul>
       </div>
 
-      <!-- Upload Zone 2: Vendor Permission File -->
+      <!-- Upload Zone 2: Vendor File (Count Removed) -->
       <div class="upload-box vendor-box" id="vendorDropZone">
         <div class="upload-label-row">
-          <label>📑 Vendor Permission File (1 File)</label>
-          <span class="badge-count" id="vendorCountBadge">0 file</span>
+          <label>📑 Vendor Permission File</label>
         </div>
-        <p class="upload-hint">Vendor Contract, Access Requests, or SLA (.pdf, .txt)</p>
+        <p class="upload-hint">Upload vendor contract, access request, or SLA (.pdf, .txt)</p>
         <input type="file" id="vendorFileInput" accept=".pdf,.txt" class="file-input" />
         <label for="vendorFileInput" id="vendorFileBtnLabel" class="file-browse-btn">+ Add file here</label>
         <div id="vendorFileName" class="selected-vendor-file">No file chosen yet</div>
@@ -115,7 +108,7 @@
         <span>🔍 Run Cross-Document Compliance Audit</span>
       </button>
 
-      <!-- Action Row Placed Exactly Below Run Audit Button -->
+      <!-- Action Button Row Placed Below Run Audit -->
       <div class="action-btn-row">
         <button id="copyEmailBtn" class="btn btn-email">
           📩 Copy Vendor Email
@@ -126,13 +119,20 @@
       </div>
     </section>
 
-    <!-- Right Pane: Dashboard & Findings -->
+    <!-- Right Pane: Executive Audit Dashboard -->
     <section class="pane output-pane" id="printableReport">
-      <div class="pane-header">
-        <h2>Compliance Health Dashboard</h2>
+      <!-- Minimalist Header specifically visible in PDF export -->
+      <div class="pdf-only-header">
+        <h1>ComplianceGuard AI — Executive Audit Report</h1>
+        <p>Confidential & Proprietary Corporate Cross-Document Audit Assessment</p>
+        <hr class="pdf-divider" />
       </div>
 
-      <!-- Loading Screen -->
+      <div class="pane-header">
+        <h2>Compliance Executive Audit Dashboard</h2>
+      </div>
+
+      <!-- Loader -->
       <div id="loader" class="loader hidden">
         <div class="spinner"></div>
         <p class="loader-title">Cross-Grounding Permissions Against Rulebooks...</p>
@@ -146,32 +146,32 @@
         <p>Choose your rule files and vendor file, or click <strong>⚡ Load Demo Datasets</strong> and hit <strong>Run Cross-Document Compliance Audit</strong>.</p>
       </div>
 
-      <!-- Visual Metric Dashboard -->
+      <!-- Metrics Section -->
       <div id="dashboardSection" class="hidden">
         <div class="metrics-grid">
           <div class="metric-card score-card">
             <span class="metric-title">Safety Score</span>
             <div class="score-display">
-              <span id="scoreValue">0</span><small>/100</small>
+              <span id="scoreValue">0.0</span><small>/100</small>
             </div>
             <span id="scoreLabel" class="score-badge">EVALUATING</span>
           </div>
 
           <div class="metric-card signal-card-green">
             <span class="metric-title">🟢 Compliant</span>
-            <div class="metric-val" id="greenPct">0%</div>
+            <div class="metric-val" id="greenPct">0.0%</div>
             <small id="greenCount">0 permissions</small>
           </div>
 
           <div class="metric-card signal-card-yellow">
-            <span class="metric-title">🟡 Tolerable</span>
-            <div class="metric-val" id="yellowPct">0%</div>
+            <span class="metric-title">🟡 Tolerable / Unlisted</span>
+            <div class="metric-val" id="yellowPct">0.0%</div>
             <small id="yellowCount">0 permissions</small>
           </div>
 
           <div class="metric-card signal-card-red">
-            <span class="metric-title">🔴 Violations</span>
-            <div class="metric-val" id="redPct">0%</div>
+            <span class="metric-title">🔴 Rule Violations</span>
+            <div class="metric-val" id="redPct">0.0%</div>
             <small id="redCount">0 permissions</small>
           </div>
         </div>
@@ -188,8 +188,8 @@
           <p id="summaryText">Audit in progress...</p>
         </div>
 
-        <!-- Interactive Filter Tabs -->
-        <div class="filter-bar">
+        <!-- Interactive Filter Tabs (Excluded in PDF) -->
+        <div class="filter-bar no-pdf">
           <span class="filter-label">Filter Findings:</span>
           <button class="filter-tab active" data-filter="ALL">All (<span id="countAll">0</span>)</button>
           <button class="filter-tab" data-filter="RED">🔴 Violations (<span id="countRed">0</span>)</button>

@@ -345,17 +345,6 @@ body {
   margin-bottom: 0.85rem;
 }
 
-.persistent-rules-banner {
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  color: var(--green);
-  padding: 0.55rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.78rem;
-  margin-bottom: 0.75rem;
-  line-height: 1.4;
-}
-
 .file-input { display: none; }
 
 .rule-upload-actions {
@@ -464,7 +453,6 @@ body {
 
 .btn-secondary:hover { background: var(--border-color); }
 
-/* PERFECT ACTION ROW BELOW RUN AUDIT BUTTON */
 .action-btn-row {
   display: grid;
   grid-template-columns: 1fr 1.3fr;
@@ -767,7 +755,7 @@ body {
 
 .copy-btn:hover { background: var(--border-color); }
 
-/* Toast */
+/* Toast Notification */
 .toast {
   position: fixed;
   bottom: 2rem;
@@ -832,3 +820,71 @@ body {
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* PDF Export Minimalist Styles */
+.pdf-only-header {
+  display: none;
+}
+
+.pdf-export-mode {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  padding: 20px !important;
+}
+
+.pdf-export-mode .pdf-only-header {
+  display: block;
+  margin-bottom: 20px;
+}
+
+.pdf-export-mode .pdf-only-header h1 {
+  font-size: 1.4rem;
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.pdf-export-mode .pdf-only-header p {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.pdf-export-mode .pdf-divider {
+  border: none;
+  border-top: 1px solid #cbd5e1;
+  margin-top: 10px;
+}
+
+.pdf-export-mode .metric-card {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: none !important;
+}
+
+.pdf-export-mode .score-display {
+  color: #0f172a !important;
+}
+
+.pdf-export-mode .card {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: none !important;
+  page-break-inside: avoid;
+  margin-bottom: 12px !important;
+}
+
+.pdf-export-mode .card-header strong {
+  color: #0f172a !important;
+}
+
+.pdf-export-mode .vendor-text,
+.pdf-export-mode .quote-box,
+.pdf-export-mode .executive-summary {
+  background: #f8fafc !important;
+  color: #334155 !important;
+  border-color: #cbd5e1 !important;
+}
+
+.pdf-export-mode .copy-btn,
+.pdf-export-mode .no-pdf {
+  display: none !important;
+}
